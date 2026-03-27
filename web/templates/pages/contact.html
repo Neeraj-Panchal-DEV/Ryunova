@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Contact — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Contact</h1>
+  <a href="{% url 'home' %}" class="btn btn--secondary">Home</a>
+</div>
+
+<article class="contact-page">
+  <figure class="contact-page__hero">
+    <img
+      src="{% static 'img/melbourne-skyline-from-shrine.jpg' %}"
+      alt="Melbourne skyline from the Shrine of Remembrance"
+      width="1280"
+      height="909"
+      class="contact-page__hero-img"
+      loading="lazy"
+      decoding="async">
+    <figcaption class="contact-page__hero-cap">Melbourne, Australia · Melbpal, <a href="https://commons.wikimedia.org/wiki/File:Melbourne_skyline_sor.jpg" rel="noopener noreferrer" target="_blank">Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="noopener noreferrer" target="_blank">CC BY-SA 4.0</a></figcaption>
+  </figure>
+
+  <div class="surface surface--form contact-page__body">
+    <h2 class="contact-page__title">Dragon and Peaches</h2>
+    <p class="contact-page__lead">We are a Melbourne-based team focused on <strong>design</strong>, <strong>conceptualisation</strong>, and the <strong>commercialisation of software</strong> for clients across retail, operations, platforms, and multi-channel commerce.</p>
+    <p>From first ideas through delivery and iteration, we combine product thinking with engineering discipline — whether that is a multi-tenant catalog platform like <strong>RyuNova</strong>, integrations with channels such as Shopify or eBay, or bespoke internal tools. We work with organisations that need clarity, reliability, and a path from prototype to production.</p>
+
+    <h3 class="contact-page__subheading">Systems we conceptualise, design, build, and operate</h3>
+    <p>We have conceptualised, designed, and built software that we <strong>operate</strong> in production — across mining, health, retail, content management, platforms, and monitoring — alongside <strong>many other systems</strong>. Examples include:</p>
+    <ul class="contact-page__systems">
+      <li><strong>ROMS Smart Mine Solution</strong></li>
+      <li><strong>QVibes for Health</strong></li>
+      <li><strong>BucRush for Retail</strong></li>
+      <li><strong>Peaches CMS</strong></li>
+      <li><strong>RyuNova Platform</strong> (this product)</li>
+      <li><strong>SACSA Monitoring</strong></li>
+    </ul>
+    <p>We continue to evolve these and other products for organisations that need dependable software from idea to production.</p>
+
+    <dl class="contact-page__details">
+      <div class="contact-page__row">
+        <dt>Website</dt>
+        <dd><a href="https://dragonandpeaches.com.au" rel="noopener noreferrer" target="_blank">dragonandpeaches.com.au</a></dd>
+      </div>
+      <div class="contact-page__row">
+        <dt>Email</dt>
+        <dd><a href="mailto:roms@dragonandpeaches.com.au">roms@dragonandpeaches.com.au</a></dd>
+      </div>
+      <div class="contact-page__row">
+        <dt>Location</dt>
+        <dd>Melbourne, Victoria, Australia</dd>
+      </div>
+    </dl>
+
+    <p class="contact-page__legal-links">
+      <a href="{% url 'privacy_policy' %}">Privacy policy</a>
+      ·
+      <a href="{% url 'terms_of_service' %}">Terms of service</a>
+    </p>
+  </div>
+</article>
+{% endblock %}

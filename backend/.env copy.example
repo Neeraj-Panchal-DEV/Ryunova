@@ -1,0 +1,27 @@
+# =============================================================================
+# RyuNova FastAPI — copy to backend/.env (never commit real secrets)
+# =============================================================================
+# Sign-in email codes use SMTP from this file when EMAIL_HOST_USER/PASSWORD set.
+# Invitations are sent by Django — duplicate the same SMTP block in web/.env.
+# See docs/ENVIRONMENT.md
+
+# --- Core API ----------------------------------------------------------------
+DATABASE_URL=postgresql+psycopg://ryunova:ryunova@localhost:5432/ryunova
+SECRET_KEY=change-me-to-a-long-random-string-for-jwt-signing
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+CORS_ORIGINS=http://127.0.0.1:8001,http://localhost:8001
+UPLOAD_DIR=./uploads
+MEDIA_URL_PREFIX=/api/v1/media
+API_PUBLIC_URL=http://127.0.0.1:8000
+
+# --- Sign-in code emails (optional; same vars as Django / FinText) ----------
+EMAIL_HOST=smtp.hostinger.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=true
+EMAIL_USE_SSL=false
+# EMAIL_HOST_USER=no_reply@yourdomain.com
+# EMAIL_HOST_PASSWORD=your_app_password_here
+# DEFAULT_FROM_EMAIL=no_reply@yourdomain.com
+# EMAIL_HOST_USER_NAME="Dragon and Peaches — RyuNova Platform"
+# SITE_URL=http://127.0.0.1:8001

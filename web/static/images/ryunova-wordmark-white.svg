@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220" width="680" height="220">
+  <rect x="0" y="0" width="680" height="220" rx="12" fill="#FFFFFF"/>
+
+  <text
+    x="340" y="98"
+    font-family="'Exo 2', 'Arial Black', sans-serif"
+    font-size="110"
+    font-weight="800"
+    font-style="italic"
+    text-anchor="middle"
+    dominant-baseline="central"
+    fill="#000000"
+    letter-spacing="6"
+  >RYUNOVA</text>
+
+  <rect x="60" y="152" width="560" height="8" rx="3" fill="#00FF66"/>
+
+  <text
+    x="340" y="195"
+    font-family="'Exo 2', 'Arial', sans-serif"
+    font-size="26"
+    font-weight="800"
+    font-style="normal"
+    text-anchor="middle"
+    dominant-baseline="central"
+    fill="#000000"
+    textLength="560"
+    lengthAdjust="spacing"
+  >ENGINEERED PLATFORM</text>
+</svg>

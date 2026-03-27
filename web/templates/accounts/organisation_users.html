@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Organisation users — {{ organisation_name }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'org-users-admin.css' %}">
+{% endblock %}
+{% block content %}
+<div class="toolbar toolbar--wrap">
+  <div>
+    <h1 class="page-title">Organisation users</h1>
+    <p class="text-muted org-users__subtitle"><strong>{{ organisation_name }}</strong> — members and access</p>
+  </div>
+  <div class="toolbar__actions">
+    <form method="post" class="org-users-toolbar-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reset_org_list">
+      <button type="submit" class="btn btn--secondary">Change organisation</button>
+    </form>
+    <button type="button" class="btn btn--primary" id="org-users-open-drawer" aria-expanded="false" aria-controls="org-users-drawer">Add user</button>
+    <a href="{% url 'dashboard' %}" class="btn btn--secondary">Dashboard</a>
+  </div>
+</div>
+
+<div class="surface org-users__table-wrap">
+  <table class="org-users-table">
+    <thead>
+      <tr>
+        <th scope="col">Public code</th>
+        <th scope="col">Email</th>
+        <th scope="col">Name</th>
+        <th scope="col">Verified</th>
+        <th scope="col">Platform</th>
+        <th scope="col">Org user-admin</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td><code class="org-users-table__code">{{ m.public_code }}</code></td>
+        <td>{{ m.email }}</td>
+        <td>{{ m.display_name|default:"—" }}</td>
+        <td>{% if m.email_verified %}<span class="badge badge--ok">Yes</span>{% else %}<span class="badge badge--muted">No</span>{% endif %}</td>
+        <td>{% if m.is_platform_user %}<span class="badge badge--platform">Yes</span>{% else %}—{% endif %}</td>
+        <td>{% if m.user_admin_access %}<span class="badge badge--ok">Yes</span>{% else %}<span class="badge badge--muted">No</span>{% endif %}</td>
+        <td class="org-users-table__actions">
+          <a href="{% url 'user_profile_edit' m.id|lower %}" class="btn btn--secondary btn--small">Edit profile</a>
+          {% if not m.email_verified and not m.is_platform_user %}
+          <form method="post" class="org-users-inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="resend_invite">
+            <input type="hidden" name="organisation_id" value="{{ organisation_id }}">
+            <input type="hidden" name="user_id" value="{{ m.id }}">
+            <button type="submit" class="btn btn--secondary btn--small">Resend invite</button>
+          </form>
+          {% endif %}
+          {% if is_platform_user and m.user_admin_access %}
+          <form method="post" class="org-users-inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_user_admin">
+            <input type="hidden" name="organisation_id" value="{{ organisation_id }}">
+            <input type="hidden" name="user_id" value="{{ m.id }}">
+            <input type="hidden" name="user_admin_access" value="false">
+            <button type="submit" class="btn btn--secondary btn--small">Revoke org admin</button>
+          </form>
+          {% elif is_platform_user %}
+          <form method="post" class="org-users-inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_user_admin">
+            <input type="hidden" name="organisation_id" value="{{ organisation_id }}">
+            <input type="hidden" name="user_id" value="{{ m.id }}">
+            <input type="hidden" name="user_admin_access" value="true">
+            <button type="submit" class="btn btn--primary btn--small">Grant org admin</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="org-users-table__empty">No members yet. Use <strong>Add user</strong> to invite someone.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="drawer" id="org-users-drawer" hidden aria-hidden="true">
+  <div class="drawer__backdrop" id="org-users-drawer-backdrop" tabindex="-1"></div>
+  <aside class="drawer__panel" role="dialog" aria-labelledby="org-users-drawer-title" aria-modal="true">
+    <div class="drawer__head">
+      <h2 id="org-users-drawer-title" class="drawer__title">Invite user</h2>
+      <button type="button" class="drawer__close" id="org-users-close-drawer" aria-label="Close">×</button>
+    </div>
+    <p class="drawer__lead text-muted">Adds this person to <strong>{{ organisation_name }}</strong> with email verification and a temporary password.</p>
+    <form method="post" class="form form--grid drawer__form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="invite">
+      <input type="hidden" name="organisation_id" value="{{ organisation_id }}">
+      <label class="field field--full">
+        <span class="field__label">Email</span>
+        <input type="email" name="email" class="input" required placeholder="name@company.com">
+      </label>
+      <label class="field field--full">
+        <span class="field__label">Display name <span class="field__hint">(optional)</span></span>
+        <input type="text" name="display_name" class="input" placeholder="Shown in the app">
+      </label>
+      <div class="field field--full drawer__form-actions">
+        <button type="submit" class="btn btn--primary">Send invitation</button>
+        <button type="button" class="btn btn--secondary" id="org-users-cancel-drawer">Cancel</button>
+      </div>
+    </form>
+  </aside>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'org-users-drawer.js' %}"></script>
+{% endblock %}

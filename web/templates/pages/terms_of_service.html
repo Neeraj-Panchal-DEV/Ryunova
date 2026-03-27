@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Terms of service — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Terms of service</h1>
+  <a href="{% url 'home' %}" class="btn btn--secondary">Home</a>
+</div>
+<div class="surface surface--form legal-doc">
+  <p class="legal-doc__meta"><strong>Effective:</strong> {% now "j F Y" %} · <strong>Provider:</strong> Dragon and Peaches Pty Ltd (Australia)</p>
+  <p>These Terms of Service (“<strong>Terms</strong>”) govern your access to and use of the <strong>RyuNova Platform</strong> application and related services (the “<strong>Services</strong>”) provided by Dragon and Peaches Pty Ltd (“<strong>we</strong>”, “<strong>us</strong>”). By using the Services, you agree to these Terms.</p>
+
+  <h2 id="eligibility">1. Eligibility and accounts</h2>
+  <p>You must be at least the age of majority in your jurisdiction (and at least 16) and have authority to bind yourself or the organisation you represent. You are responsible for maintaining the confidentiality of your credentials and for activity under your account. Notify us promptly of unauthorised use.</p>
+
+  <h2 id="description">2. Description of the Services</h2>
+  <p>RyuNova Platform provides multi-tenant tools for managing product catalog data (including organisations, categories, brands, products, and media references) and user administration features as made available from time to time. We may modify, suspend, or discontinue features with reasonable notice where practicable.</p>
+
+  <h2 id="customer">3. Organisation customers and authorised users</h2>
+  <p>Where an organisation (“<strong>Customer</strong>”) subscribes or is granted access, the Customer may invite <strong>authorised users</strong>. As between us and the Customer, the Customer is responsible for its users’ compliance with these Terms and for the lawfulness of data they submit. If you are invited by a Customer, you acknowledge that the Customer may control access, roles, and certain settings affecting your use.</p>
+
+  <h2 id="content">4. Your content and our rights</h2>
+  <p>You retain ownership of data and content you submit (“<strong>Your Content</strong>”). You grant us a non-exclusive, worldwide licence to host, process, transmit, display, and back up Your Content solely to provide, secure, and improve the Services. You represent that you have the rights necessary to grant this licence and that Your Content does not violate third-party rights or applicable law.</p>
+
+  <h2 id="acceptable">5. Acceptable use</h2>
+  <p>You must not misuse the Services. Without limitation, you must not: attempt unauthorised access to systems, accounts, or data; interfere with the integrity or performance of the Services; use the Services to distribute malware or spam; scrape or overload the Services beyond reasonable use; or use the Services for any unlawful purpose. We may suspend or terminate access for violations.</p>
+
+  <h2 id="ip">6. Our intellectual property</h2>
+  <p>The Services, including software, branding, documentation, and templates (excluding Your Content), are owned by us or our licensors. Except for the limited rights expressly granted, these Terms do not transfer any intellectual property rights to you.</p>
+
+  <h2 id="third-party">7. Third-party services</h2>
+  <p>The Services may integrate with or link to third-party services (e.g. hosting, email). Those services are governed by their own terms and privacy policies; we are not responsible for their practices.</p>
+
+  <h2 id="disclaimers">8. Disclaimers</h2>
+  <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE” WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. NOTHING IN THESE TERMS EXCLUDES OR LIMITS ANY NON-WAIVABLE RIGHTS UNDER AUSTRALIAN CONSUMER LAW WHERE YOU ARE A “CONSUMER” WITHIN THE MEANING OF THAT LAW.</p>
+
+  <h2 id="liability">9. Limitation of liability</h2>
+  <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, NEITHER PARTY WILL BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR LOSS OF PROFITS, DATA, OR GOODWILL, ARISING OUT OF OR RELATED TO THE SERVICES OR THESE TERMS. OUR AGGREGATE LIABILITY FOR ALL CLAIMS ARISING OUT OF OR RELATED TO THE SERVICES IN ANY TWELVE-MONTH PERIOD WILL NOT EXCEED THE GREATER OF (A) AUD $100 OR (B) THE FEES YOU PAID US FOR THE SERVICES IN THAT PERIOD (IF ANY). THESE LIMITATIONS DO NOT APPLY WHERE PROHIBITED BY LAW, INCLUDING NON-EXCLUDABLE GUARANTEES UNDER THE AUSTRALIAN CONSUMER LAW.</p>
+
+  <h2 id="indemnity">10. Indemnity</h2>
+  <p>You will defend and indemnify us against third-party claims arising from Your Content or your breach of these Terms or violation of law, except to the extent caused by our wilful misconduct.</p>
+
+  <h2 id="termination">11. Termination</h2>
+  <p>You may stop using the Services at any time. We may suspend or terminate access for breach, risk, legal requirement, or end of an arrangement with your Customer. Provisions that by nature should survive (including intellectual property, disclaimers, liability limits where enforceable, and governing law) will survive termination.</p>
+
+  <h2 id="law">12. Governing law and venue</h2>
+  <p>These Terms are governed by the laws of <strong>Victoria, Australia</strong>. You submit to the non-exclusive jurisdiction of the courts of Victoria, except where mandatory consumer protection rules require otherwise.</p>
+
+  <h2 id="general">13. General</h2>
+  <p>These Terms constitute the entire agreement regarding the subject matter and supersede prior understandings. If a provision is unenforceable, the remainder remains in effect. Failure to enforce a provision is not a waiver. You may not assign these Terms without our consent; we may assign them in connection with a business transfer.</p>
+
+  <h2 id="contact-terms">14. Contact</h2>
+  <p>Questions about these Terms: <a href="mailto:roms@dragonandpeaches.com.au">roms@dragonandpeaches.com.au</a> · <a href="{% url 'contact' %}">Contact page</a> · <a href="https://dragonandpeaches.com.au" rel="noopener noreferrer" target="_blank">dragonandpeaches.com.au</a></p>
+  <p class="legal-doc__note">Our <a href="{% url 'privacy_policy' %}">Privacy policy</a> explains how we handle personal information.</p>
+</div>
+{% endblock %}

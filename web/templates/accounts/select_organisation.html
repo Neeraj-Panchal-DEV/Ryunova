@@ -1,0 +1,36 @@
+{% extends "base_auth.html" %}
+{% block title %}Choose organisation — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="auth-uber-card">
+  <div class="auth-uber-card__brand">
+    {% include "includes/_auth_wordmark_logo.html" %}
+  </div>
+  <h1 class="auth-uber-card__title">Choose organisation</h1>
+  <p class="auth-uber-card__subtitle">Your catalog, categories, and brands are scoped to the organisation you select.</p>
+
+  <form method="post" class="auth-uber-form">
+    {% csrf_token %}
+    <div class="auth-uber-field org-radio-list">
+      {% if is_platform_user %}
+      <label class="org-radio-row">
+        <input type="radio" name="organisation_id" value="__all__" {% if not current_organisation_id %}checked{% endif %}>
+        <span class="org-radio-row__body">
+          <strong class="org-radio-row__title">All organisations</strong>
+          <span class="org-radio-row__hint">System workspace — counts and lists span every tenant.</span>
+        </span>
+      </label>
+      {% endif %}
+      {% for o in organisations %}
+      <label class="org-radio-row">
+        <input type="radio" name="organisation_id" value="{{ o.id }}" {% if current_organisation_id == o.id %}checked{% endif %}>
+        <span class="org-radio-row__body">
+          <strong class="org-radio-row__title">{{ o.name }}</strong>
+          <span class="org-radio-row__hint">{{ o.slug }}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="auth-uber-submit">Continue</button>
+  </form>
+</div>
+{% endblock %}

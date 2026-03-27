@@ -1,0 +1,12 @@
+{% if use_turnstile and turnstile_site_key %}
+<div class="auth-turnstile-wrap">
+  <p class="auth-turnstile__hint" id="turnstile-desc">Security check (Cloudflare)</p>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <div
+    class="cf-turnstile"
+    data-sitekey="{{ turnstile_site_key }}"
+    data-theme="light"
+    data-size="normal"
+    aria-describedby="turnstile-desc"></div>
+</div>
+{% endif %}

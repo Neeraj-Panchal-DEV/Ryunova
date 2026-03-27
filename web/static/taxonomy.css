@@ -1,0 +1,277 @@
+/* Categories / brands — slide drawers, sortable headers, detail layout */
+
+.taxonomy-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.taxonomy-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.taxonomy-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.taxonomy-table-wrap .table {
+  margin: 0;
+  min-width: 1100px;
+}
+
+/* Actions <td> must stay table-cell; flex lives on the inner toolbar (see app.css .cell-actions). */
+.taxonomy-table-wrap td.taxonomy-cell-actions {
+  display: table-cell;
+  vertical-align: middle;
+  width: 8.5rem;
+}
+
+.taxonomy-cell-actions__toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.taxonomy-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+
+.taxonomy-th:hover {
+  background: #f3f3f3;
+}
+
+.taxonomy-th--sorted-asc::after {
+  content: " ▲";
+  font-size: 0.65em;
+  opacity: 0.75;
+}
+
+.taxonomy-th--sorted-desc::after {
+  content: " ▼";
+  font-size: 0.65em;
+  opacity: 0.75;
+}
+
+.taxonomy-td-name {
+  font-weight: 600;
+}
+
+.taxonomy-td-desc,
+.taxonomy-td-muted,
+.taxonomy-td-date {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  max-width: 200px;
+}
+
+.taxonomy-td-desc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tbody tr[data-taxonomy-row] {
+  cursor: pointer;
+}
+
+tbody tr[data-taxonomy-row]:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+tbody tr[data-taxonomy-row]:hover {
+  background: #fafafa;
+}
+
+.taxonomy-th-drag {
+  width: 40px;
+  cursor: default;
+  user-select: none;
+}
+
+.taxonomy-th-drag:hover {
+  background: transparent;
+}
+
+.taxonomy-td-drag {
+  width: 40px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.taxonomy-drag-handle {
+  display: inline-block;
+  cursor: grab;
+  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: -3px;
+  padding: 4px 4px;
+  user-select: none;
+  line-height: 1;
+}
+
+.taxonomy-drag-handle:active {
+  cursor: grabbing;
+}
+
+.taxonomy-drag-handle--inactive {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+tbody tr.taxonomy-row--dragging {
+  opacity: 0.5;
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.32s ease;
+}
+
+.drawer-overlay--visible {
+  opacity: 1;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(440px, 100vw);
+  max-width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: var(--bg-card);
+  z-index: 210;
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.18);
+  transform: translateX(100%);
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer-panel--open {
+  transform: translateX(0);
+}
+
+.drawer-panel--wide {
+  width: min(520px, 100vw);
+}
+
+.drawer-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.drawer-panel__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.drawer-panel__close {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 14px;
+  border: none;
+  background: var(--input-bg);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.drawer-panel__close:hover {
+  background: #e8e8e8;
+}
+
+.drawer-panel__body {
+  padding: 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.taxonomy-detail-dl {
+  margin: 0;
+}
+
+.taxonomy-detail-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.taxonomy-detail-row:last-child {
+  border-bottom: none;
+}
+
+.taxonomy-detail-row dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.taxonomy-detail-dd {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.taxonomy-detail-actions {
+  margin: 24px 0 0;
+  padding-top: 8px;
+}
+
+.drawer-form .field {
+  margin-bottom: 18px;
+  display: block;
+}
+
+.drawer-form .form-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .taxonomy-detail-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

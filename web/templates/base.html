@@ -1,0 +1,108 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="{% static 'images/ryunova-favicon.svg' %}" type="image/svg+xml">
+  <title>{% block title %}RyuNova Platform{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="site-layout {% block body_class %}{% endblock %}">
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a href="{% if request.session.access_token %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}" class="logo" aria-label="{{ header_brand_name }} — home">
+        <span class="logo__mark">{% include "includes/_ryunova_wordmark_header.html" %}</span>
+        <span class="logo__text">{{ header_brand_name }}</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        {% if not request.resolver_match or request.resolver_match.url_name != "home" %}
+        <a href="{% if request.session.access_token %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}">Home</a>
+        <a href="{% url 'product_list' %}">Products</a>
+        <a href="{% url 'category_list' %}">Categories</a>
+        <a href="{% url 'brand_list' %}">Brands</a>
+        {% endif %}
+        {% if nav_user %}
+        <div class="user-nav" data-user-nav>
+          <button type="button" class="user-nav__trigger" id="user-nav-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
+            {% if nav_user.avatar_url %}
+            <img src="{{ nav_user.avatar_url }}" alt="" class="user-nav__avatar-img" width="36" height="36" decoding="async">
+            {% else %}
+            <span class="user-nav__avatar-fallback" aria-hidden="true">{{ nav_user.initials }}</span>
+            {% endif %}
+          </button>
+          <div class="user-nav__menu" data-user-nav-menu hidden role="menu" aria-labelledby="user-nav-trigger">
+            <a href="{% url 'profile' %}" class="user-nav__menu-item" role="menuitem">Profile</a>
+            <a href="{% url 'change_password' %}" class="user-nav__menu-item" role="menuitem">Change password</a>
+            {% if request.session.is_platform_user or request.session.user_admin_access %}
+            <div class="user-nav__submenu-wrap" data-user-nav-submenu>
+              <button type="button" class="user-nav__menu-item user-nav__submenu-trigger" id="user-nav-users-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="user-nav-users-panel">
+                <span>Users</span>
+                <span class="user-nav__chevron" aria-hidden="true">▾</span>
+              </button>
+              <div class="user-nav__submenu-panel" id="user-nav-users-panel" role="group" aria-label="Users" hidden>
+                {% if request.session.is_platform_user %}
+                <a href="{% url 'organisation_users_manage' %}" class="user-nav__menu-item user-nav__menu-item--sub" role="menuitem">Organisation users</a>
+                <a href="{% url 'invite_user_platform' %}" class="user-nav__menu-item user-nav__menu-item--sub" role="menuitem">Invite user (any organisation)</a>
+                <a href="{% url 'create_organisation' %}" class="user-nav__menu-item user-nav__menu-item--sub" role="menuitem">New organisation</a>
+                {% endif %}
+                {% if request.session.user_admin_access %}
+                <a href="{% url 'invite_user_organisation' %}" class="user-nav__menu-item user-nav__menu-item--sub" role="menuitem">Invite team member</a>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+            {% if workspace_menu_org_line or workspace_show_change_org_link %}
+            <div class="user-nav__menu-org-block" role="group" aria-label="Organisation">
+              {% if workspace_menu_org_line %}
+              <div class="user-nav__menu-org" id="user-nav-org-label">{{ workspace_menu_org_line }}</div>
+              {% endif %}
+              {% if workspace_show_change_org_link %}
+              <a href="{% url 'select_organisation' %}" class="user-nav__menu-item user-nav__menu-item--org" role="menuitem" title="{{ workspace_org_chip_title }}">Change organisation</a>
+              {% endif %}
+            </div>
+            {% endif %}
+            <a href="{% url 'logout' %}" class="user-nav__menu-item user-nav__menu-item--footer" role="menuitem">Sign out</a>
+          </div>
+        </div>
+        {% elif request.session.access_token %}
+        <a href="{% url 'logout' %}">Sign out</a>
+        {% else %}
+        <a href="{% url 'login' %}">Sign in</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main class="main site-layout__main {% block main_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer" role="contentinfo">
+    <div class="site-footer__inner site-footer__inner--grid">
+      <span class="site-footer__brand">{{ footer_brand_name }}</span>
+      <nav class="site-footer__nav" aria-label="Legal and contact">
+        <a href="{% url 'privacy_policy' %}">Privacy policy</a>
+        <a href="{% url 'terms_of_service' %}">Terms of service</a>
+        <a href="{% url 'contact' %}">Contact</a>
+      </nav>
+      <span class="site-footer__copy">© {% now "Y" %} Dragon and Peaches Pty Ltd</span>
+    </div>
+  </footer>
+  {% if messages %}
+  <script>
+  window.__FLASH_MESSAGES__ = [
+  {% for message in messages %}
+    { level: "{{ message.tags|default:'info'|escapejs }}", text: "{{ message|escapejs }}" }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+  ];
+  </script>
+  {% endif %}
+  <div id="snackbar" class="snackbar" role="status" aria-live="polite" aria-hidden="true" hidden></div>
+  <script src="{% static 'flash-messages.js' %}"></script>
+  {% if nav_user %}<script src="{% static 'user-nav.js' %}"></script>{% endif %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

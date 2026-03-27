@@ -1,0 +1,21 @@
+{% extends "base_auth.html" %}
+{% block title %}Verify email — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="auth-uber-card">
+  <div class="auth-uber-card__brand">
+    {% include "includes/_auth_wordmark_logo.html" %}
+  </div>
+  <h1 class="auth-uber-card__title">Verify your email</h1>
+  <p class="auth-uber-card__subtitle">Confirm your address to activate your RyuNova Platform account. After verification, sign in and update your profile.</p>
+
+  <form method="post" class="auth-uber-form">
+    {% csrf_token %}
+    <div class="auth-uber-field">
+      <label class="auth-uber-label" for="id-token">Verification token</label>
+      <input id="id-token" type="text" name="token" required class="auth-uber-input" autocomplete="off" value="{{ token|default:'' }}" placeholder="Paste token from your email">
+    </div>
+    <button type="submit" class="auth-uber-submit">Verify email</button>
+  </form>
+  <p class="auth-uber-foot"><a href="{% url 'login' %}">Back to sign in</a></p>
+</div>
+{% endblock %}

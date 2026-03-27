@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'vendor/cropper/cropper.min.css' %}">
+{% endblock %}
+{% block title %}{% if profile_mode == "admin" %}Edit user profile{% else %}Your profile{% endif %} — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">{% if profile_mode == "admin" %}Edit member profile{% else %}Your profile{% endif %}</h1>
+  <div class="toolbar__actions">
+    {% if profile_mode == "admin" %}
+    <a href="{% url 'organisation_users_manage' %}" class="btn btn--secondary">Back to users</a>
+    {% else %}
+    <a href="{% url 'change_password' %}" class="btn btn--secondary">Change password</a>
+    {% endif %}
+    <a href="{% url 'dashboard' %}" class="btn btn--secondary">Dashboard</a>
+  </div>
+</div>
+
+{% if profile_mode == "admin" %}
+<p class="text-muted profile-page__admin-note">You are editing another user’s profile. Email can be updated directly; the member will use the new address to sign in.</p>
+{% endif %}
+
+<div class="surface surface--form profile-page" data-profile-photo>
+  <form id="profile-edit-form" method="post" enctype="multipart/form-data" class="form form--grid">
+    {% csrf_token %}
+    {% if profile_mode == "admin" and profile_list_organisation_id %}
+    <input type="hidden" name="organisation_id" value="{{ profile_list_organisation_id }}">
+    {% endif %}
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Personal details</legend>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">First name</span>
+          <input type="text" name="first_name" class="input" maxlength="128" value="{{ me.first_name|default:'' }}">
+        </label>
+        <label class="field">
+          <span class="field__label">Last name</span>
+          <input type="text" name="last_name" class="input" maxlength="128" value="{{ me.last_name|default:'' }}">
+        </label>
+      </div>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Display name</span>
+          <input type="text" name="display_name" class="input" maxlength="255" value="{{ me.display_name|default:'' }}" placeholder="How your name appears">
+        </label>
+        <label class="field">
+          <span class="field__label">Date of birth</span>
+          <input type="date" name="date_of_birth" class="input" value="{{ me.date_of_birth|default:'' }}">
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Contact &amp; professional</legend>
+      <div class="field field--full">
+        <span class="field__label">Phone</span>
+        <div class="profile-phone-row">
+          <select name="phone_country_dial" class="input profile-phone-row__dial" aria-label="Country calling code">
+            <option value="+61" {% if phone_dial == "+61" %}selected{% endif %}>Australia +61</option>
+            <option value="+1" {% if phone_dial == "+1" %}selected{% endif %}>United States +1</option>
+            <option value="+44" {% if phone_dial == "+44" %}selected{% endif %}>United Kingdom +44</option>
+            <option value="+64" {% if phone_dial == "+64" %}selected{% endif %}>New Zealand +64</option>
+            <option value="+91" {% if phone_dial == "+91" %}selected{% endif %}>India +91</option>
+            <option value="+86" {% if phone_dial == "+86" %}selected{% endif %}>China +86</option>
+            <option value="+81" {% if phone_dial == "+81" %}selected{% endif %}>Japan +81</option>
+            <option value="+49" {% if phone_dial == "+49" %}selected{% endif %}>Germany +49</option>
+            <option value="+33" {% if phone_dial == "+33" %}selected{% endif %}>France +33</option>
+            <option value="+353" {% if phone_dial == "+353" %}selected{% endif %}>Ireland +353</option>
+          </select>
+          <input type="text" name="phone_national" class="input profile-phone-row__num" inputmode="tel" autocomplete="tel-national" placeholder="National number" value="{{ phone_national }}" aria-label="National phone number">
+        </div>
+        <p class="field__hint">Stored in international (E.164) format. Leave blank to clear.</p>
+      </div>
+
+      {% if profile_mode == "admin" %}
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Email (sign-in)</span>
+          <input type="email" name="admin_email" class="input" value="{{ me.email }}" autocomplete="email">
+        </label>
+        <label class="field">
+          <span class="field__label">Job title</span>
+          <input type="text" name="job_title" class="input" maxlength="255" value="{{ me.job_title|default:'' }}">
+        </label>
+      </div>
+      {% else %}
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Email (sign-in)</span>
+          <input type="email" class="input input--copy-field" value="{{ me.email }}" readonly tabindex="0" aria-readonly="true" autocomplete="email">
+        </label>
+        <label class="field">
+          <span class="field__label">Job title</span>
+          <input type="text" name="job_title" class="input" maxlength="255" value="{{ me.job_title|default:'' }}">
+        </label>
+      </div>
+      {% if me.pending_email %}
+      <p class="field__hint profile-pending-email">Confirmation pending for <strong>{{ me.pending_email }}</strong>. Check that inbox and click the link we sent.</p>
+      {% endif %}
+      <label class="field field--full">
+        <span class="field__label">Request email change</span>
+        <input type="email" name="new_email_request" class="input" placeholder="new.address@company.com" autocomplete="off" value="{{ form_new_email_request|default:'' }}">
+        <p class="field__hint">We will send a verification link to the new address. Your login email does not change until you confirm.</p>
+      </label>
+      {% endif %}
+
+      <p class="profile-form__group-label" id="profile-social-label">Social handles</p>
+      <div class="profile-form__row profile-form__row--3" aria-labelledby="profile-social-label">
+        <label class="field">
+          <span class="field__label">X / Twitter</span>
+          <input type="text" name="social_twitter" class="input" maxlength="255" value="{{ me.social_handles.twitter|default:'' }}" placeholder="@handle or URL">
+        </label>
+        <label class="field">
+          <span class="field__label">LinkedIn</span>
+          <input type="text" name="social_linkedin" class="input" maxlength="255" value="{{ me.social_handles.linkedin|default:'' }}">
+        </label>
+        <label class="field">
+          <span class="field__label">GitHub</span>
+          <input type="text" name="social_github" class="input" maxlength="255" value="{{ me.social_handles.github|default:'' }}">
+        </label>
+      </div>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Instagram</span>
+          <input type="text" name="social_instagram" class="input" maxlength="255" value="{{ me.social_handles.instagram|default:'' }}">
+        </label>
+        <label class="field">
+          <span class="field__label">Other</span>
+          <input type="text" name="social_other" class="input" maxlength="255" value="{{ me.social_handles.other|default:'' }}">
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Roles</legend>
+      <p class="field__hint" style="margin:0;">{% if me.roles %}{{ me.roles|join:", " }}{% else %}—{% endif %}</p>
+    </fieldset>
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Profile photo</legend>
+      <p class="field__hint">JPEG, PNG, GIF, or WebP. Max 5&nbsp;MB. Use upload or your device camera (where supported).</p>
+      <div class="profile-page__photo-row">
+        <div class="profile-page__preview-wrap">
+          {% if me.avatar_url %}
+          <img src="{{ me.avatar_url }}" alt="" class="profile-page__preview" id="profile-avatar-preview" width="120" height="120" decoding="async">
+          {% else %}
+          <div class="profile-page__preview profile-page__preview--placeholder" id="profile-avatar-preview" aria-hidden="true">No photo</div>
+          {% endif %}
+        </div>
+        <div class="profile-page__photo-actions">
+          <input type="file" name="avatar" id="profile-avatar-file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp">
+          <button type="button" class="btn btn--secondary" id="profile-avatar-pick">Choose file</button>
+          {% if profile_mode == "self" %}
+          <button type="button" class="btn btn--secondary" id="profile-camera-open">Use camera</button>
+          {% endif %}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="profile-section profile-section--identifiers">
+      <legend class="profile-section__title">Account identifiers</legend>
+      <p class="field__hint profile-section__intro">Your user ID and public code are system-assigned and cannot be changed.</p>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">User ID</span>
+          <input type="text" class="input input--copy-field" value="{{ me.id }}" readonly tabindex="0" aria-readonly="true" id="profile-user-id" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="field__label">Public code</span>
+          <input type="text" class="input input--copy-field" value="{{ me.public_code }}" readonly tabindex="0" aria-readonly="true" id="profile-public-code" autocomplete="off" aria-label="Public code">
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="form-actions field field--full profile-page__form-actions">
+      <button type="submit" class="btn btn--primary">Save profile</button>
+      <button type="button" class="btn btn--secondary" id="profile-form-clear" aria-label="Clear editable profile fields">Clear fields</button>
+    </div>
+  </form>
+</div>
+
+<div class="profile-crop-modal" id="profile-crop-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="profile-crop-title">
+  <div class="profile-crop-modal__backdrop" data-profile-crop-close></div>
+  <div class="profile-crop-modal__panel">
+    <h2 id="profile-crop-title" class="profile-crop-modal__title">Choose profile photo area</h2>
+    <p class="field__hint profile-crop-modal__hint">Drag to move the image, resize the square, then apply. The preview updates after you save.</p>
+    <div class="profile-crop-modal__crop-wrap">
+      <img id="profile-crop-img" class="profile-crop-modal__img" alt="">
+    </div>
+    <div class="profile-crop-modal__actions">
+      <button type="button" class="btn btn--primary" id="profile-crop-apply">Apply crop</button>
+      <button type="button" class="btn btn--secondary" data-profile-crop-close>Cancel</button>
+    </div>
+  </div>
+</div>
+
+{% if profile_mode == "self" %}
+<div class="profile-camera-modal" id="profile-camera-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="profile-camera-title">
+  <div class="profile-camera-modal__backdrop" data-profile-camera-close></div>
+  <div class="profile-camera-modal__panel">
+    <h2 id="profile-camera-title" class="profile-camera-modal__title">Take a photo</h2>
+    <p class="field__hint">Allow camera access when prompted. Photo is saved as JPEG when you capture.</p>
+    <video id="profile-camera-video" class="profile-camera-modal__video" playsinline webkit-playsinline muted autoplay></video>
+    <canvas id="profile-camera-canvas" hidden></canvas>
+    <p class="profile-camera-modal__error" id="profile-camera-error" hidden></p>
+    <div class="profile-camera-modal__actions">
+      <button type="button" class="btn btn--primary" id="profile-camera-capture" disabled>Capture</button>
+      <button type="button" class="btn btn--secondary" data-profile-camera-close>Cancel</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'vendor/cropper/cropper.min.js' %}"></script>
+<script src="{% static 'profile-form-clear.js' %}"></script>
+<script src="{% static 'profile-photo.js' %}"></script>
+{% endblock %}

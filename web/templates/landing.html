@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}RyuNova Platform — Run every sales channel from one place{% endblock %}
+{% block main_class %}main--landing{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'landing.css' %}?v=hero-flex">
+{% endblock %}
+{% block content %}
+<div class="landing">
+  <section class="landing-hero landing-hero--split" aria-labelledby="landing-hero-title">
+    <div class="landing-hero__split">
+      <div class="landing-hero__copy">
+        <p class="landing-hero__eyebrow">RYUNOVA PLATFORM · Multi-channel</p>
+        <h1 id="landing-hero-title" class="landing-hero__title">All your listings, inventory, and orders—reimagined for eCommerce channels.</h1>
+        <p class="landing-hero__lead">
+          RyuNova Platform is the control room for teams who sell across marketplaces and your own store.
+          One product master, many channels, clear fulfillment—built for coffee equipment and beyond.
+        </p>
+        <div class="landing-hero__ctas">
+          {% if request.session.access_token %}
+          <a class="landing-btn landing-btn--primary landing-btn--on-light" href="{% url 'dashboard' %}">Open dashboard</a>
+          <a class="landing-btn landing-btn--ghost landing-btn--on-light" href="{% url 'product_list' %}">Catalog</a>
+          {% else %}
+          <a class="landing-btn landing-btn--primary landing-btn--on-light" href="{% url 'login' %}">Sign in</a>
+          <a class="landing-btn landing-btn--ghost landing-btn--on-light" href="#landing-cap-title">Explore capabilities</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="landing-hero__media">
+        <img
+          class="landing-hero__img"
+          src="{% static 'images/landing-hero-espresso.png' %}"
+          width="1200"
+          height="1500"
+          alt="Premium espresso atelier—manual machine, curated studio space, and specialty coffee craft."
+          decoding="async"
+          fetchpriority="high">
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-section landing-section--alt" aria-labelledby="landing-why-title">
+    <div class="landing-section__inner">
+      <header class="landing-section__head">
+        <h2 id="landing-why-title" class="landing-section__title">A single platform built for multi-channel commerce</h2>
+        <p class="landing-section__lead">
+          Inspired by how enterprise dashboards like
+          <a href="https://www.uber.com/us/en/business/" rel="noopener noreferrer" target="_blank" style="color:inherit;text-decoration:underline;">Uber for Business</a>
+          put travel and meals in one place—RyuNova Platform does the same for product data, listings, and fulfillment.
+        </p>
+      </header>
+      <div class="landing-pillars">
+        <div>
+          <h3 class="landing-pillar__title">Reduce manual work</h3>
+          <p class="landing-pillar__text">Stop retyping titles and prices per site. Push once from a master record, then tune per channel only where it matters.</p>
+        </div>
+        <div>
+          <h3 class="landing-pillar__title">See every channel clearly</h3>
+          <p class="landing-pillar__text">Know what’s listed where, what’s in stock, and which orders need attention—without jumping between seller consoles.</p>
+        </div>
+        <div>
+          <h3 class="landing-pillar__title">Protect revenue &amp; reputation</h3>
+          <p class="landing-pillar__text">Reserved inventory, audit trails, and structured workflows help prevent oversells and costly listing mistakes.</p>
+        </div>
+        <div>
+          <h3 class="landing-pillar__title">Grow into new marketplaces</h3>
+          <p class="landing-pillar__text">Add channels as data—same schema, adapters in the application—so expansion doesn’t mean another spreadsheet.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-section" aria-labelledby="landing-channels-title">
+    <div class="landing-section__inner">
+      <header class="landing-section__head">
+        <h2 id="landing-channels-title" class="landing-section__title">Channels your teams care about</h2>
+        <p class="landing-section__lead">
+          The roadmap targets the places coffee equipment buyers already shop—plus major global marketplaces for scale.
+        </p>
+      </header>
+      <div class="landing-channels">
+        {% for ch in channels %}
+        <article class="landing-channel">
+          <div class="landing-channel__mark" aria-hidden="true">{{ ch.code|upper }}</div>
+          <div>
+            <h3 class="landing-channel__name">{{ ch.name }}</h3>
+            <p class="landing-channel__blurb">{{ ch.blurb }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-section landing-section--alt" aria-labelledby="landing-cap-title">
+    <div class="landing-section__inner">
+      <header class="landing-section__head">
+        <h2 id="landing-cap-title" class="landing-section__title">Full platform capabilities</h2>
+        <p class="landing-section__lead">
+          Everything below reflects the intended product—some areas are live in MVP, others arrive in later releases. You’re seeing the whole story upfront.
+        </p>
+      </header>
+      <div class="landing-cap-grid">
+        {% for group in capability_groups %}
+        <article class="landing-cap-card">
+          <h3 class="landing-cap-card__title">{{ group.title }}</h3>
+          <ul class="landing-cap-card__list">
+            {% for item in group.items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-section landing-section--dark landing-cta" aria-labelledby="landing-cta-title">
+    <div class="landing-section__inner">
+      <h2 id="landing-cta-title" class="landing-cta__title">Ready to centralize your channels?</h2>
+      <p class="landing-cta__lead">Sign in to manage products, categories, and brands—or explore the catalog when you’re authenticated.</p>
+      <div class="landing-hero__ctas" style="justify-content:center;">
+        {% if request.session.access_token %}
+        <a class="landing-btn landing-btn--primary" href="{% url 'dashboard' %}">Open dashboard</a>
+        {% else %}
+        <a class="landing-btn landing-btn--primary" href="{% url 'login' %}">Sign in</a>
+        {% endif %}
+        {% if request.session.access_token %}
+        <a class="landing-btn landing-btn--ghost" href="{% url 'product_list' %}">Catalog</a>
+        {% else %}
+        <a class="landing-btn landing-btn--ghost" href="{% url 'home' %}#landing-cap-title">Explore capabilities</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

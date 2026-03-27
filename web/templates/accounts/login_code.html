@@ -1,0 +1,50 @@
+{% extends "base_auth.html" %}
+{% block title %}Sign in with email code — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="auth-uber-card">
+  <div class="auth-uber-card__brand">
+    {% include "includes/_auth_wordmark_logo.html" %}
+  </div>
+  <h1 class="auth-uber-card__title">{% if step == 2 %}Enter your code{% else %}Email sign-in{% endif %}</h1>
+  {% if step == 2 %}
+  <p class="auth-uber-card__subtitle">We sent a 6-digit code to <strong>{{ email }}</strong>. It expires in 15 minutes. {% if use_turnstile %}Complete the security check below, then submit.{% else %}Answer the human check below, then submit.{% endif %}</p>
+  <form method="post" class="auth-uber-form">
+    {% csrf_token %}
+    <input type="hidden" name="step" value="2">
+    <div class="auth-uber-field">
+      <label class="auth-uber-label" for="id-code">6-digit code</label>
+      <input id="id-code" name="code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required class="auth-uber-input" placeholder="000000" aria-describedby="code-hint">
+      <p id="code-hint" class="text-muted" style="font-size:0.875rem;margin-top:0.5rem;">Check your spam folder if you do not see the email.</p>
+    </div>
+    {% if use_turnstile %}
+      {% include "accounts/_turnstile_widget.html" %}
+    {% else %}
+      {% include "accounts/_human_verification.html" %}
+    {% endif %}
+    <button type="submit" class="auth-uber-submit">Sign in</button>
+  </form>
+  <p class="text-muted" style="margin-top:1rem;font-size:0.9rem;">
+    <a href="{% url 'login_code' %}?reset=1">Use a different email</a>
+    ·
+    <a href="{% url 'login' %}">Sign in with password</a>
+  </p>
+  {% else %}
+  <p class="auth-uber-card__subtitle">Enter your work email and complete the “Are you human?” check. If you have a verified account, we will send a one-time code (same idea as Slack).</p>
+  <form method="post" class="auth-uber-form">
+    {% csrf_token %}
+    <input type="hidden" name="step" value="1">
+    <div class="auth-uber-field">
+      <label class="auth-uber-label" for="id-email">Email</label>
+      <input id="id-email" type="email" name="email" required autocomplete="username" class="auth-uber-input" placeholder="name@company.com" value="{{ email }}">
+    </div>
+    {% if use_turnstile %}
+      {% include "accounts/_turnstile_widget.html" %}
+    {% else %}
+      {% include "accounts/_human_verification.html" %}
+    {% endif %}
+    <button type="submit" class="auth-uber-submit">Send code</button>
+  </form>
+  <p class="text-muted" style="margin-top:1rem;font-size:0.9rem;"><a href="{% url 'login' %}">Sign in with password instead</a></p>
+  {% endif %}
+</div>
+{% endblock %}

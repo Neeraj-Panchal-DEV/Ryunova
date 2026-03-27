@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ title }} — RyuNova Platform{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'taxonomy.css' %}">
+{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">{{ title }}</h1>
+  <a href="{% url 'product_list' %}" class="btn btn--secondary">Back to list</a>
+</div>
+<form id="product-master-form" method="post" enctype="multipart/form-data" class="form form--grid form--product surface surface--form">
+  {% csrf_token %}
+  <div class="product-form-top{% if product and product.images %} product-form-top--split{% endif %}">
+    <div class="product-form-top__main">
+      <div class="form-grid product-form-top__fields">
+        <label class="field field--full">
+          <span class="field__label">Title</span>
+          <input name="title" class="input" required value="{{ product.title|default:'' }}">
+        </label>
+        <label class="field field--full">
+          <span class="field__label">Description</span>
+          <p class="field__hint" id="product-description-hint">Rich text is saved as <strong>HTML</strong> (e.g. for Shopify <code>body_html</code>, eBay description HTML, and other channels).</p>
+          <textarea
+            id="product_description_html"
+            name="description"
+            class="input input--textarea product-description-rich"
+            rows="8"
+            aria-describedby="product-description-hint">{{ product.description|default:''|safe }}</textarea>
+        </label>
+      </div>
+    </div>
+    {% if product and product.images %}
+    <aside class="product-form-top__aside" aria-labelledby="product-current-media-title">
+      <h2 class="section-title" id="product-current-media-title">Current media</h2>
+      <p class="field__hint">The <strong>cover</strong> is shown first everywhere (channels + list). Pick one radio per product.</p>
+      <ul class="product-media-existing">
+        {% for img in product.images %}
+        <li class="product-media-existing__item">
+          <div class="product-media-existing__thumb">
+            {% if img.media_type == 'video' %}
+            <video src="{{ img.url }}" class="preview-img preview-img--video" muted playsinline preload="metadata" controls></video>
+            {% else %}
+            <img src="{{ img.url }}" alt="{{ img.filename }}" class="preview-img">
+            {% endif %}
+          </div>
+          <label class="product-media-existing__cover">
+            <input type="radio" name="cover_media_id" value="{{ img.id }}" {% if img.is_cover %}checked{% endif %}>
+            <span>{% if img.is_cover %}Cover{% else %}Set as cover{% endif %}</span>
+          </label>
+          <span class="product-media-existing__meta">{{ img.media_type|default:'image' }}{% if img.filename %} · {{ img.filename }}{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </aside>
+    {% endif %}
+  </div>
+  <div class="form-grid">
+    <label class="field">
+      <span class="field__label">Condition</span>
+      <select name="condition" class="input input--select">
+        <option value="new" {% if not product or product.condition == 'new' %}selected{% endif %}>new</option>
+        <option value="used" {% if product and product.condition == 'used' %}selected{% endif %}>used</option>
+        <option value="refurbished" {% if product and product.condition == 'refurbished' %}selected{% endif %}>refurbished</option>
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label-row field__label-row--with-add">
+        <span class="field__label">Category</span>
+        <button type="button" class="btn-quick-add" data-open-quick-category aria-label="Add new category" title="Add new category">
+          <span class="btn-quick-add__glyph" aria-hidden="true">+</span>
+        </button>
+      </span>
+      <select name="category_id" id="product-field-category_id" class="input input--select">
+        <option value="">—</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {% if product and product.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label-row field__label-row--with-add">
+        <span class="field__label">Brand</span>
+        <button type="button" class="btn-quick-add" data-open-quick-brand aria-label="Add new brand" title="Add new brand">
+          <span class="btn-quick-add__glyph" aria-hidden="true">+</span>
+        </button>
+      </span>
+      <select name="brand_id" id="product-field-brand_id" class="input input--select">
+        <option value="">—</option>
+        {% for b in brands %}
+        <option value="{{ b.id }}" {% if product and product.brand_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span class="field__label">Model</span>
+      <input name="model" class="input" value="{{ product.model|default:'' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Colour</span>
+      <input name="colour" class="input" maxlength="255" value="{{ product.colour|default:'' }}" placeholder="e.g. Stainless steel, Black">
+    </label>
+    <label class="field">
+      <span class="field__label">Length (cm)</span>
+      <input name="length_cm" type="number" step="0.001" min="0" class="input" value="{{ product.length_cm|default:'' }}" placeholder="Optional">
+    </label>
+    <label class="field">
+      <span class="field__label">Width (cm)</span>
+      <input name="width_cm" type="number" step="0.001" min="0" class="input" value="{{ product.width_cm|default:'' }}" placeholder="Optional">
+    </label>
+    <label class="field">
+      <span class="field__label">Depth (cm)</span>
+      <input name="depth_cm" type="number" step="0.001" min="0" class="input" value="{{ product.depth_cm|default:'' }}" placeholder="Optional">
+    </label>
+    <div class="field field--full">
+      <p class="field__hint" style="margin:0;">Physical size uses <strong>centimetres</strong> (L × W × D). Leave blank if not applicable.</p>
+    </div>
+    <label class="field">
+      <span class="field__label">Base price</span>
+      <input name="base_price" type="number" step="0.01" min="0" class="input" required value="{{ product.base_price|default:'0' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Compare at price</span>
+      <input name="compare_at_price" type="number" step="0.01" min="0" class="input" value="{{ product.compare_at_price|default:'' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Quantity</span>
+      <input name="quantity" type="number" min="0" class="input" value="{{ product.quantity|default:'1' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Status</span>
+      <select name="status" class="input input--select">
+        <option value="active" {% if not product or product.status == 'active' %}selected{% endif %}>active</option>
+        <option value="draft" {% if product and product.status == 'draft' %}selected{% endif %}>draft</option>
+        <option value="archived" {% if product and product.status == 'archived' %}selected{% endif %}>archived</option>
+      </select>
+    </label>
+    <label class="field field--checkbox">
+      <span class="field__label">Enabled in catalog</span>
+      <label class="checkbox-label checkbox-label--inline">
+        <input type="checkbox" name="active" value="1" {% if not product or product.active %}checked{% endif %}>
+        Active (shown in product lists when “Show disabled” is off)
+      </label>
+    </label>
+    <div class="field field--full product-media-field">
+      <span class="field__label">Images &amp; videos</span>
+      <p class="field__hint">Add multiple files. Choose which one is the <strong>cover</strong> — it appears first for channels and in product listings. JPEG, PNG, GIF, WebP, MP4, WebM, QuickTime.</p>
+      {% if is_add_product and product %}<p class="field__hint">If save failed, choose your files again — browsers do not keep file inputs after a new page load.</p>{% endif %}
+      <input type="hidden" name="cover_index" id="product-cover-index" value="{% if product %}{{ product.cover_index|default:'0' }}{% else %}0{% endif %}">
+      <input
+        type="file"
+        id="product-media-input"
+        name="media"
+        multiple
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+        class="input input--file">
+      <div id="product-media-preview" class="product-media-preview" aria-live="polite"></div>
+      {% if product and product.images %}
+      <label class="checkbox-label checkbox-label--inline product-media-cover-first">
+        <input type="checkbox" name="cover_first_new" value="1" {% if product and product.cover_first_new %}checked{% endif %}>
+        Use <strong>first new upload</strong> as cover (instead of a current file below)
+      </label>
+      {% endif %}
+      <div class="field product-media-url-field">
+        <span class="field__label">Import image from URL</span>
+        <p class="field__hint">Direct link to a <strong>JPEG, PNG, GIF, or WebP</strong> only (not HTML pages). The server checks the file and saves it with a name derived from the product title.</p>
+        <input type="url" name="image_url" class="input" placeholder="https://example.com/path/to/photo.jpg" autocomplete="off" inputmode="url" value="{% if product %}{{ product.image_url|default:'' }}{% endif %}">
+        <label class="checkbox-label checkbox-label--inline product-media-cover-first">
+          <input type="checkbox" name="image_url_is_cover" value="1" {% if product and product.image_url_is_cover %}checked{% endif %}>
+          Set <strong>imported URL image</strong> as cover
+        </label>
+      </div>
+    </div>
+    <div class="field field--full product-sku-footer">
+      <span class="field__label">SKU</span>
+      {% if is_add_product and not product.id %}
+      <p class="field__hint">A unique <strong>10-letter</strong> code (A–Z) is assigned when you create this product. It stays fixed for the life of the product and is the stable identifier for channels such as Shopify and eBay.</p>
+      <input type="text" class="input input--readonly" value="" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true" placeholder="Assigned when saved">
+      {% else %}
+      <input type="text" class="input input--readonly" value="{{ product.sku|default:'' }}" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true">
+      <p class="field__hint">SKU cannot be changed after the product is created.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn--primary btn--lg">{% if is_add_product %}Create product{% else %}Save changes{% endif %}</button>
+    {% if is_add_product %}<a href="{% url 'product_create' %}" class="btn btn--secondary btn--lg">Clear form</a>{% endif %}
+  </div>
+</form>
+
+<div
+  id="product-taxonomy-quickadd"
+  data-category-url="{% url 'category_list' %}"
+  data-brand-url="{% url 'brand_list' %}"
+  data-include-inactive="{{ taxonomy_include_inactive|yesno:'true,false' }}"
+  hidden
+  aria-hidden="true"></div>
+<script type="application/json" id="product-form-categories-json">{{ categories_json|default:"[]"|safe }}</script>
+
+<div class="drawer-overlay" id="product-quick-overlay" hidden aria-hidden="true"></div>
+
+<div class="drawer-panel" id="product-quick-drawer-category" hidden role="dialog" aria-labelledby="product-quick-category-title">
+  <div class="drawer-panel__head">
+    <h2 id="product-quick-category-title" class="drawer-panel__title">Add category</h2>
+    <button type="button" class="drawer-panel__close" data-close-product-quick>Close</button>
+  </div>
+  <div class="drawer-panel__body">
+    <form id="product-quick-form-category" class="drawer-form">
+      {% csrf_token %}
+      <label class="field">
+        <span class="field__label">Name</span>
+        <input type="text" name="name" class="input" required maxlength="255" placeholder="Category name" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="field__label">Description <span class="field__optional">(optional)</span></span>
+        <textarea name="description" class="input input--textarea" rows="3" maxlength="16000" placeholder="Internal notes"></textarea>
+      </label>
+      <label class="field">
+        <span class="field__label">Sort order</span>
+        <input type="number" name="sort_order" class="input" value="0">
+      </label>
+      <label class="field">
+        <span class="field__label">Parent</span>
+        <select name="parent_id" class="input input--select">
+          <option value="">— None —</option>
+        </select>
+      </label>
+      <label class="field field--checkbox">
+        <span class="field__label">Enabled</span>
+        <label class="checkbox-label checkbox-label--inline">
+          <input type="checkbox" name="active" value="1" checked>
+          Active in default lists
+        </label>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Save category</button>
+        <button type="button" class="btn btn--secondary" data-close-product-quick>Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="drawer-panel" id="product-quick-drawer-brand" hidden role="dialog" aria-labelledby="product-quick-brand-title">
+  <div class="drawer-panel__head">
+    <h2 id="product-quick-brand-title" class="drawer-panel__title">Add brand</h2>
+    <button type="button" class="drawer-panel__close" data-close-product-quick>Close</button>
+  </div>
+  <div class="drawer-panel__body">
+    <form id="product-quick-form-brand" class="drawer-form">
+      {% csrf_token %}
+      <label class="field">
+        <span class="field__label">Name</span>
+        <input type="text" name="name" class="input" required maxlength="255" placeholder="Brand name" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="field__label">Description <span class="field__optional">(optional)</span></span>
+        <textarea name="description" class="input input--textarea" rows="3" maxlength="16000" placeholder="Notes about the brand"></textarea>
+      </label>
+      <label class="field">
+        <span class="field__label">Sort order</span>
+        <input type="number" name="sort_order" class="input" value="0">
+      </label>
+      <label class="field field--checkbox">
+        <span class="field__label">Enabled</span>
+        <label class="checkbox-label checkbox-label--inline">
+          <input type="checkbox" name="active" value="1" checked>
+          Active in default lists
+        </label>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Save brand</button>
+        <button type="button" class="btn btn--secondary" data-close-product-quick>Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if product and product.id %}
+<section class="surface surface--form" style="margin-top:1.5rem;">
+  <h2 class="section-title">Record details</h2>
+  <dl class="taxonomy-detail-dl">
+    <div class="taxonomy-detail-row"><dt>Date added</dt><dd class="taxonomy-detail-dd">{{ product.created_at|default:"—"|slice:":19" }}</dd></div>
+    <div class="taxonomy-detail-row"><dt>Last modified</dt><dd class="taxonomy-detail-dd">{{ product.updated_at|default:"—"|slice:":19" }}</dd></div>
+    <div class="taxonomy-detail-row"><dt>Added by</dt><dd class="taxonomy-detail-dd">{{ product.created_by_label|default:"—" }}</dd></div>
+    <div class="taxonomy-detail-row"><dt>Last updated by</dt><dd class="taxonomy-detail-dd">{{ product.updated_by_label|default:"—" }}</dd></div>
+  </dl>
+</section>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js" crossorigin="anonymous"></script>
+<script src="{% static 'product-description-editor.js' %}"></script>
+<script src="{% static 'product-taxonomy-quickadd.js' %}"></script>
+<script src="{% static 'product-media-picker.js' %}"></script>
+<script src="{% static 'product-form-guard.js' %}"></script>
+{% endblock %}

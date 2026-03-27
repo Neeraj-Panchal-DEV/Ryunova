@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Edit category — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Edit category</h1>
+  <a href="{% url 'category_list' %}{% if include_inactive %}?include_inactive=on{% endif %}" class="btn btn--secondary">Back to list</a>
+</div>
+<form method="post" class="form form--grid surface surface--form">
+  {% csrf_token %}
+  {% if include_inactive %}<input type="hidden" name="include_inactive" value="on">{% endif %}
+  <div class="form-grid">
+    <label class="field field--full">
+      <span class="field__label">Name</span>
+      <input name="name" class="input" required maxlength="255" value="{{ category.name|default:'' }}">
+    </label>
+    <label class="field field--full">
+      <span class="field__label">Description</span>
+      <textarea name="description" class="input input--textarea" rows="5" maxlength="16000" placeholder="Optional notes, internal context, or merchandising copy">{{ category.description|default:'' }}</textarea>
+    </label>
+    <label class="field">
+      <span class="field__label">Slug</span>
+      <input name="slug" class="input" maxlength="255" value="{{ category.slug|default:'' }}" placeholder="Optional">
+    </label>
+    <label class="field">
+      <span class="field__label">Sort order</span>
+      <input name="sort_order" type="number" class="input" value="{{ category.sort_order|default:0 }}">
+    </label>
+    <label class="field field--full">
+      <span class="field__label">Parent category</span>
+      <select name="parent_id" class="input input--select">
+        <option value="">— None —</option>
+        {% for p in parent_choices %}
+        <option value="{{ p.id }}" {% if category.parent_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field field--checkbox field--full">
+      <span class="field__label">Enabled</span>
+      <label class="checkbox-label checkbox-label--inline">
+        <input type="checkbox" name="active" value="1" {% if category.active %}checked{% endif %}>
+        Active (shown when “Include disabled” is off)
+      </label>
+    </label>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn--yellow">Save category</button>
+  </div>
+</form>
+{% endblock %}

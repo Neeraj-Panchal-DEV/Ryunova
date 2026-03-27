@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're invited to RyuNova Platform</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f5; font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <!-- Header (aligned with Fintext verify_email.html) -->
+          <tr>
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td>
+                    {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Dragon and Peaches" width="120" height="32" style="display:block; height:32px; width:auto; max-width:120px;" />
+                    {% else %}
+                    <span style="font-size:20px; font-weight:700; color:#1f2937;">Dragon and Peaches</span>
+                    <span style="font-size:16px; color:#6b7280; margin-left:4px;">RyuNova Platform</span>
+                    {% endif %}
+                  </td>
+                  <td align="right">
+                    <a href="{{ login_url }}" style="display:inline-block; padding:8px 16px; border:1px solid #d1d5db; border-radius:6px; color:#374151; text-decoration:none; font-size:14px; font-weight:500;">Log in</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Main content -->
+          <tr>
+            <td style="padding: 40px 32px 32px;">
+              <h1 style="margin:0 0 16px; font-size:24px; font-weight:700; color:#111827; line-height:1.3;">{% if reminder %}Reminder: finish activating your access{% else %}Activate your RyuNova Platform access{% endif %}</h1>
+              <p style="margin:0 0 24px; font-size:16px; line-height:1.6; color:#4b5563;">Hello {{ greeting_name }},</p>
+              {% if reminder %}
+              <p style="margin:0 0 24px; font-size:16px; line-height:1.6; color:#4b5563;">Here is a fresh verification link and temporary password for <strong>{{ organisation_name }}</strong>. Your previous invitation may have expired or been misplaced.</p>
+              {% else %}
+              <p style="margin:0 0 24px; font-size:16px; line-height:1.6; color:#4b5563;">You’ve been invited to <strong>{{ organisation_name }}</strong> on RyuNova Platform — your next step is to verify your email and sign in so you can manage catalog data for your organisation.</p>
+              {% endif %}
+              <p style="margin:0 0 24px; font-size:15px; line-height:1.6; color:#4b5563;">RyuNova Platform helps teams maintain a single source of truth for products, categories, and brands across channels. Click the button below to verify your email, then sign in with your temporary password and update your profile.</p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 32px;">
+                <tr>
+                  <td>
+                    <a href="{{ verify_link }}" style="display:inline-block; padding:14px 28px; background-color:#2563eb; color:#ffffff; text-decoration:none; font-size:16px; font-weight:600; border-radius:6px;">Verify email &amp; get started</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px; font-size:13px; color:#6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="margin:0 0 24px; font-size:13px; word-break:break-all;"><a href="{{ verify_link }}" style="color:#2563eb; text-decoration:underline;">{{ verify_link }}</a></p>
+              <!-- Temporary password (invite-specific) -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb; border-radius:6px; margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px; border-bottom:1px solid #e5e7eb;">
+                    <span style="font-size:15px; font-weight:600; color:#111827;">Temporary password</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 20px; font-size:14px; color:#111827; font-family:ui-monospace, Consolas, monospace; word-break:break-all;">{{ temporary_password }}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 20px 16px; font-size:13px; color:#6b7280;">Use this once at sign-in, then change your password under <strong>Profile</strong>.</td>
+                </tr>
+              </table>
+              <!-- Benefits summary (Fintext-style panel) -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb; border-radius:6px;">
+                <tr>
+                  <td style="padding:16px 20px; border-bottom:1px solid #e5e7eb;">
+                    <span style="font-size:15px; font-weight:600; color:#111827;">What you get with RyuNova Platform</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 20px; border-bottom:1px solid #e5e7eb; font-size:14px; color:#4b5563;">Organisation-scoped product master, categories, and brands</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 20px; border-bottom:1px solid #e5e7eb; font-size:14px; color:#4b5563;">Rich media and attributes ready for multi-channel listings</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 20px; font-size:14px; color:#4b5563;">Clear roles and audit-friendly profile expectations</td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0; font-size:14px; line-height:1.6; color:#4b5563;">After you verify, open the app from <a href="{{ site_url }}/" style="color:#2563eb; text-decoration:underline;">the home page</a> and complete your profile so your team knows who made changes.</p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; border-top: 1px solid #e5e7eb; background-color:#f9fafb;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom:16px;">
+                    {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Dragon and Peaches" width="100" height="26" style="display:inline-block; height:26px; width:auto; max-width:100px;" />
+                    {% else %}
+                    <span style="font-size:16px; font-weight:600; color:#374151;">Dragon and Peaches</span>
+                    <span style="font-size:14px; color:#6b7280;"> · RyuNova Platform</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px; line-height:1.5; color:#6b7280; text-align:center;">
+                    You received this email because a system administrator invited you to RyuNova Platform. If you did not expect this, do not click any links — you can safely ignore this email.
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:16px 0 8px;">
+                    <a href="{{ site_url }}/" style="font-size:12px; color:#2563eb; text-decoration:underline;">Home</a>
+                    <span style="color:#d1d5db; margin:0 8px;">|</span>
+                    <a href="{{ login_url }}" style="font-size:12px; color:#2563eb; text-decoration:underline;">Log in</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:11px; color:#9ca3af; text-align:center;">© {{ copyright_year }} Dragon and Peaches Pty Ltd. All rights reserved.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,432 @@
+/* Landing page — Uber for Business–style marketing (reference: uber.com/us/en/business/)
+   Hero: light copy column + full-bleed photography right (split layout). */
+html {
+  scroll-behavior: smooth;
+}
+
+#landing-cap-title {
+  scroll-margin-top: calc(var(--header-h, 60px) + 20px);
+}
+
+.main.main--landing {
+  max-width: none;
+  padding: 0;
+  width: 100%;
+}
+
+.landing {
+  overflow-x: clip;
+}
+
+/* ——— Hero (split: light copy LEFT + photo RIGHT) ——— */
+.landing .landing-hero--split {
+  background: #ffffff;
+  color: #111111;
+  padding: 0;
+}
+
+/*
+ * Flexbox row: more reliable than grid across viewports / RTL.
+ * direction:ltr keeps copy on the physical left, image on the physical right.
+ */
+.landing-hero__split {
+  direction: ltr;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: min(88vh, 820px);
+  width: 100%;
+}
+
+/* Side-by-side from 600px up (tablets, narrow laptops, IDE split panes still may stack) */
+@media (min-width: 600px) {
+  .landing-hero__split {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    min-height: min(90vh, 900px);
+  }
+}
+
+.landing-hero__copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #111111;
+  padding: clamp(40px, 6vw, 80px) clamp(24px, 4vw, 48px) clamp(48px, 7vw, 96px);
+  padding-top: calc(clamp(40px, 6vw, 80px) + var(--header-h, 60px));
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 600px) {
+  .landing-hero__copy {
+    flex: 1 1 52%;
+    margin-left: 0;
+    margin-right: 0;
+    max-width: none;
+    align-self: center;
+    padding-top: calc(clamp(32px, 5vw, 64px) + var(--header-h, 60px));
+    padding-bottom: clamp(40px, 6vw, 80px);
+    /* Align with .landing-section__inner (1280px + gutter) */
+    padding-left: max(24px, calc((100vw - 1280px) / 2 + 24px));
+    padding-right: clamp(20px, 3vw, 40px);
+  }
+}
+
+.landing-hero__media {
+  flex: 1 1 48%;
+  min-width: 0;
+  min-height: min(42vh, 420px);
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+@media (min-width: 600px) {
+  .landing-hero__media {
+    min-height: 0;
+    align-self: stretch;
+    min-width: min(260px, 38vw);
+    max-width: min(900px, 50vw);
+    flex: 0 0 clamp(260px, 42vw, 820px);
+  }
+}
+
+.landing-hero__eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b6b6b;
+  margin: 0 0 16px;
+}
+
+.landing-hero__title {
+  margin: 0 0 20px;
+  font-size: clamp(2.125rem, 4.5vw, 3.35rem);
+  font-weight: 700;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
+  color: #000;
+  max-width: 18ch;
+}
+
+@media (min-width: 600px) {
+  .landing-hero__title {
+    max-width: 14ch;
+  }
+}
+
+.landing-hero__lead {
+  margin: 0 0 32px;
+  font-size: clamp(1rem, 1.8vw, 1.1875rem);
+  line-height: 1.55;
+  color: #6b6b6b;
+  max-width: 42ch;
+}
+
+.landing-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Hero image — fills right column; absolute only when row layout */
+.landing-hero__img {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  object-fit: cover;
+  object-position: 42% center;
+  display: block;
+}
+
+@media (min-width: 600px) {
+  .landing-hero__img {
+    min-height: 100%;
+    position: absolute;
+    inset: 0;
+    object-position: 45% 35%;
+  }
+}
+
+.landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 28px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.landing-btn:active {
+  transform: scale(0.98);
+}
+
+/* Dark sections (bottom CTA): white primary pill */
+.landing-btn--primary {
+  background: #fff;
+  color: #000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.landing-btn--primary:hover {
+  background: #f0f0f0;
+}
+
+.landing-btn--ghost {
+  background: transparent;
+  color: #fff;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.landing-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Light hero column: black primary CTA (Uber for Business pattern) */
+.landing-btn--on-light.landing-btn--primary {
+  background: #000;
+  color: #fff;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.landing-btn--on-light.landing-btn--primary:hover {
+  background: #333;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.25);
+}
+
+.landing-btn--on-light.landing-btn--ghost {
+  color: #000;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.18);
+}
+
+.landing-btn--on-light.landing-btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ——— Section shell ——— */
+.landing-section {
+  padding: clamp(56px, 8vw, 96px) 24px;
+}
+
+.landing-section--alt {
+  background: #f6f6f6;
+}
+
+.landing-section--dark {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.landing-section__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.landing-section__head {
+  max-width: 720px;
+  margin-bottom: 40px;
+}
+
+.landing-section__title {
+  margin: 0 0 16px;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: inherit;
+}
+
+.landing-section--dark .landing-section__title {
+  color: #fff;
+}
+
+.landing-section__lead {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: #6b6b6b;
+}
+
+.landing-section--dark .landing-section__lead {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ——— Channel cards ——— */
+.landing-channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.landing-channel {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 16px;
+  padding: 22px 22px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.landing-section--alt .landing-channel {
+  background: #fff;
+}
+
+.landing-channel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.07);
+}
+
+.landing-channel__mark {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #000;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+}
+
+.landing-channel__name {
+  margin: 0 0 6px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #000;
+}
+
+.landing-channel__blurb {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #6b6b6b;
+}
+
+/* ——— Capabilities ——— */
+.landing-cap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.landing-cap-card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 16px;
+  padding: 28px 26px 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.landing-section--alt .landing-cap-card {
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+}
+
+.landing-cap-card__title {
+  margin: 0 0 16px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #000;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #000;
+}
+
+.landing-cap-card__list {
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #444;
+}
+
+.landing-cap-card__list li {
+  margin-bottom: 10px;
+}
+
+.landing-cap-card__list li:last-child {
+  margin-bottom: 0;
+}
+
+/* ——— Value props (3-up like Uber) ——— */
+.landing-pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 28px 32px;
+}
+
+.landing-pillar__title {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #000;
+}
+
+.landing-section--dark .landing-pillar__title {
+  color: #fff;
+}
+
+.landing-pillar__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #6b6b6b;
+}
+
+.landing-section--dark .landing-pillar__text {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ——— Bottom CTA ——— */
+.landing-cta {
+  text-align: center;
+  padding: clamp(48px, 6vw, 72px) 24px;
+}
+
+.landing-cta__title {
+  margin: 0 0 12px;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.landing-cta__lead {
+  margin: 0 0 28px;
+  font-size: 1.0625rem;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 640px) {
+  .landing-hero__ctas {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .landing-btn {
+    width: 100%;
+  }
+}

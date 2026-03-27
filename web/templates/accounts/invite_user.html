@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ invite_title|default:"Invite user" }} — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">{{ invite_title|default:"Invite user" }}</h1>
+  <a href="{% url 'dashboard' %}" class="btn btn--secondary">Dashboard</a>
+</div>
+<p class="text-muted" style="max-width:640px;margin-bottom:1.25rem;">
+  {% if invite_mode == "platform" %}
+  Platform users can invite someone into any organisation. The new user receives email verification and a temporary password.
+  {% else %}
+  Invite a colleague to your current organisation only. They will receive email verification and a temporary password.
+  {% endif %}
+</p>
+
+<div class="surface surface--form">
+  <form method="post" class="form form--grid">
+    {% csrf_token %}
+    {% if invite_mode == "platform" %}
+    <label class="field field--full">
+      <span class="field__label">Organisation</span>
+      <select id="id-org" name="organisation_id" class="input" required>
+        {% for o in organisations %}
+        <option value="{{ o.id }}" {% if organisation_id|default:'' == o.id %}selected{% endif %}>{{ o.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% else %}
+    <div class="field field--full">
+      <span class="field__label">Organisation</span>
+      <p class="field__hint" style="margin:0;font-weight:600;">{{ fixed_organisation_name }}</p>
+    </div>
+    {% endif %}
+    <label class="field field--full">
+      <span class="field__label">Email</span>
+      <input id="id-email" type="email" name="email" required class="input" placeholder="name@company.com" value="{{ email|default:'' }}">
+    </label>
+    <label class="field field--full">
+      <span class="field__label">Display name <span class="field__hint">(optional)</span></span>
+      <input id="id-dn" type="text" name="display_name" class="input" placeholder="Shown in the app" value="{{ display_name|default:'' }}">
+    </label>
+    <div class="field field--full">
+      <button type="submit" class="btn btn--primary">Send invitation</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

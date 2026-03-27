@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}New organisation — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">New organisation</h1>
+  <a href="{% url 'dashboard' %}" class="btn btn--secondary">Dashboard</a>
+</div>
+<p class="text-muted" style="max-width:640px;margin-bottom:1.25rem;">Create a tenant workspace with a display name, optional URL slug and description, and an optional company logo (JPEG, PNG, GIF, or WebP — max 5&nbsp;MB). Only platform users can create organisations.</p>
+
+<div class="surface surface--form">
+  <form method="post" enctype="multipart/form-data" class="form form--grid">
+    {% csrf_token %}
+    <label class="field field--full">
+      <span class="field__label">Organisation name</span>
+      <input type="text" name="name" class="input" required maxlength="255" value="{{ name|default:'' }}" placeholder="e.g. Coffee Machine Warehouse">
+    </label>
+    <label class="field field--full">
+      <span class="field__label">Slug <span class="field__hint">(optional — URL-safe; auto-generated from name if empty)</span></span>
+      <input type="text" name="slug" class="input" maxlength="255" value="{{ slug|default:'' }}" placeholder="e.g. cmw-au">
+    </label>
+    <label class="field field--full">
+      <span class="field__label">Description <span class="field__hint">(optional)</span></span>
+      <textarea name="description" class="input" rows="3" placeholder="Short summary for your team">{{ description|default:'' }}</textarea>
+    </label>
+    <label class="field field--full">
+      <span class="field__label">Company logo <span class="field__hint">(optional)</span></span>
+      <input type="file" name="logo" class="input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp">
+    </label>
+    <div class="field field--full">
+      <button type="submit" class="btn btn--primary">Create organisation</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

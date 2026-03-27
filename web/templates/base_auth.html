@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="{% static 'images/ryunova-favicon.svg' %}" type="image/svg+xml">
+  <title>{% block title %}Sign in — RyuNova Platform{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app.css' %}">
+  <link rel="stylesheet" href="{% static 'auth.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="site-layout site-layout--auth {% block body_extra_class %}{% endblock %}">
+  <div class="auth-shell auth-shell--grow">
+    <div class="auth-top">
+      <a href="{% url 'home' %}" class="auth-back" aria-label="Back to home">← Home</a>
+    </div>
+    {% block content %}{% endblock %}
+  </div>
+  <footer class="site-footer-auth" role="contentinfo">
+    <nav class="site-footer-auth__nav" aria-label="Legal and contact">
+      <a href="{% url 'privacy_policy' %}">Privacy policy</a>
+      <a href="{% url 'terms_of_service' %}">Terms of service</a>
+      <a href="{% url 'contact' %}">Contact</a>
+    </nav>
+    <p class="site-footer-auth__copy">© {% now "Y" %} Dragon and Peaches Pty Ltd</p>
+  </footer>
+  {% if messages %}
+  <script>
+  window.__FLASH_MESSAGES__ = [
+  {% for message in messages %}
+    { level: "{{ message.tags|default:'info'|escapejs }}", text: "{{ message|escapejs }}" }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+  ];
+  </script>
+  {% endif %}
+  <div id="snackbar" class="snackbar" role="status" aria-live="polite" aria-hidden="true" hidden></div>
+  <script src="{% static 'flash-messages.js' %}"></script>
+  <script src="{% static 'auth.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

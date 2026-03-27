@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dashboard — RyuNova Platform{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'dashboard.css' %}">
+{% endblock %}
+{% block content %}
+{% if demo_banner %}
+<div class="dashboard-banner" role="status">
+  <strong>Demo data.</strong> Figures below are placeholders for the full multi-channel solution. They will be replaced with live metrics as listings, inventory, and order modules ship in future MVPs.
+</div>
+{% endif %}
+
+<header class="dashboard-head">
+  <h1 class="dashboard-head__title">Welcome back</h1>
+  <p class="dashboard-head__lead">Here’s a snapshot of how RyuNova Platform will look when every module is connected.</p>
+  <div class="dashboard-quick">
+    <a href="{% url 'product_list' %}" class="btn btn--primary">Products</a>
+    <a href="{% url 'category_list' %}" class="btn btn--secondary">Categories</a>
+    <a href="{% url 'brand_list' %}" class="btn btn--secondary">Brands</a>
+    <a href="{% url 'home' %}" class="btn btn--secondary">Marketing home</a>
+  </div>
+</header>
+
+<section class="dashboard-section" aria-labelledby="dash-kpis">
+  <h2 id="dash-kpis" class="visually-hidden">Key metrics</h2>
+  <div class="dashboard-kpis">
+    {% for k in kpis %}
+    <article class="dashboard-kpi">
+      <p class="dashboard-kpi__value">{{ k.value }}</p>
+      <p class="dashboard-kpi__label">{{ k.label }}</p>
+      <p class="dashboard-kpi__delta">{{ k.delta }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="dashboard-section" aria-labelledby="dash-channels">
+  <h2 id="dash-channels" class="dashboard-section__title">Channels overview</h2>
+  <div class="dashboard-table-wrap">
+    <table class="dashboard-table">
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Status</th>
+          <th>Live listings (demo)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in channel_rows %}
+        <tr>
+          <td><strong>{{ row.name }}</strong></td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.listings }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="dashboard-section" aria-labelledby="dash-activity">
+  <h2 id="dash-activity" class="dashboard-section__title">Recent activity</h2>
+  <ul class="dashboard-activity">
+    {% for item in activity %}
+    <li>
+      <span class="dashboard-activity__time">{{ item.time }}</span>
+      <span>{{ item.text }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

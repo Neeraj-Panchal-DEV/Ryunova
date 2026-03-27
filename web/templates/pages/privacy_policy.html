@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Privacy policy — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Privacy policy</h1>
+  <a href="{% url 'home' %}" class="btn btn--secondary">Home</a>
+</div>
+<div class="surface surface--form legal-doc">
+  <p class="legal-doc__meta"><strong>Effective:</strong> {% now "j F Y" %} · <strong>Controller:</strong> Dragon and Peaches Pty Ltd (Australia)</p>
+  <p>This Privacy Policy describes how we collect, use, disclose and protect personal information when you use the <strong>RyuNova Platform</strong> web application and related services (the “<strong>Services</strong>”) operated by Dragon and Peaches Pty Ltd (“<strong>we</strong>”, “<strong>us</strong>”). It applies to visitors, invited users, and organisation members who access the Services.</p>
+
+  <h2 id="applicability">1. Applicability</h2>
+  <p>If you do not agree with this policy, do not use the Services. Where your employer or another organisation (“<strong>Customer</strong>”) has invited you to a workspace, that Customer may also impose policies on how business data is handled; this policy covers our processing as the operator of the platform.</p>
+
+  <h2 id="collection">2. Information we collect</h2>
+  <p>We collect information in the following categories:</p>
+  <ul>
+    <li><strong>Account and profile data:</strong> email address, display name, password or authentication factors, organisation memberships, role flags (e.g. platform administrator, organisation user-administrator), optional profile image metadata.</li>
+    <li><strong>Organisation and catalog data:</strong> organisation name, branding assets you upload, and product master data you enter (e.g. titles, descriptions, SKUs, categories, brands, media references) — this is typically business information but may include personal data if you choose to include it in free-text fields.</li>
+    <li><strong>Technical and usage data:</strong> IP address, browser type, approximate location derived from IP, timestamps, diagnostic logs, and security events necessary to operate and protect the Services.</li>
+    <li><strong>Communications:</strong> messages you send to us (e.g. support requests) and transactional emails we send (invitations, verification, sign-in codes).</li>
+  </ul>
+
+  <h2 id="use">3. How we use information</h2>
+  <p>We use personal information to:</p>
+  <ul>
+    <li>Provide, maintain and improve the Services (authentication, multi-tenant workspaces, catalog features, media handling).</li>
+    <li>Send service-related notices (verification, security alerts, operational messages).</li>
+    <li>Detect, prevent and address fraud, abuse, and technical issues.</li>
+    <li>Comply with legal obligations and enforce our terms.</li>
+    <li>Analyse aggregate or de-identified usage to improve the product (where we do not identify you).</li>
+  </ul>
+  <p>We rely on <strong>performance of a contract</strong> (providing the Services you or your Customer requested), <strong>legitimate interests</strong> (security, product improvement, proportionate direct communication about the Services), and <strong>legal obligation</strong> where applicable. Where Australian Privacy Principles require consent for specific uses (e.g. certain direct marketing), we will obtain it separately.</p>
+
+  <h2 id="sharing">4. How we share information</h2>
+  <p>We may share personal information with:</p>
+  <ul>
+    <li><strong>Your organisation:</strong> administrators of your workspace can see member lists and may control access; content you submit may be visible to other authorised users in the same organisation according to product design.</li>
+    <li><strong>Service providers:</strong> hosting, email delivery, and infrastructure vendors who process data on our instructions and under appropriate contractual safeguards.</li>
+    <li><strong>Professional advisers:</strong> lawyers, accountants or insurers where required.</li>
+    <li><strong>Authorities:</strong> when we believe disclosure is required by law, regulation, court order, or to protect rights, safety, or security.</li>
+    <li><strong>Business transfers:</strong> in connection with a merger, acquisition, or asset sale, subject to confidentiality and continued protection consistent with this policy.</li>
+  </ul>
+  <p>We do not sell your personal information in the ordinary sense of “selling” lists to data brokers.</p>
+
+  <h2 id="retention">5. Retention</h2>
+  <p>We retain personal information for as long as your account or organisation relationship is active and as needed to provide the Services, comply with law, resolve disputes, and enforce agreements. Verification tokens and sign-in codes are kept only for their short validity periods plus a limited operational window.</p>
+
+  <h2 id="security">6. Security</h2>
+  <p>We implement technical and organisational measures appropriate to the nature of the Services (including encryption in transit where standard for web traffic, access controls, and separation of customer data by organisation). No method of transmission or storage is completely secure; we encourage strong passwords and safe handling of invitation and sign-in codes.</p>
+
+  <h2 id="rights">7. Your rights</h2>
+  <p>Depending on your location, you may have rights to access, correct, delete, or restrict certain processing of your personal information, or to lodge a complaint with a supervisory authority. In Australia, you may contact us (see below) to request access or correction under the <em>Privacy Act 1988</em> (Cth). We will respond within a reasonable time.</p>
+
+  <h2 id="international">8. International transfers</h2>
+  <p>Our systems may be hosted in or accessed from jurisdictions outside Australia. Where we transfer personal information overseas, we take steps that are reasonable in the circumstances to ensure the recipient protects the information consistently with this policy and applicable law.</p>
+
+  <h2 id="children">9. Children</h2>
+  <p>The Services are intended for business use and not for children under 16. We do not knowingly collect personal information from children.</p>
+
+  <h2 id="changes">10. Changes</h2>
+  <p>We may update this Privacy Policy from time to time. We will post the revised version on this page and update the effective date. Material changes may be notified by email or in-product notice where appropriate.</p>
+
+  <h2 id="contact">11. Contact</h2>
+  <p>For privacy questions or requests: <a href="mailto:roms@dragonandpeaches.com.au">roms@dragonandpeaches.com.au</a> · <a href="{% url 'contact' %}">Contact page</a> · <a href="https://dragonandpeaches.com.au" rel="noopener noreferrer" target="_blank">dragonandpeaches.com.au</a></p>
+</div>
+{% endblock %}

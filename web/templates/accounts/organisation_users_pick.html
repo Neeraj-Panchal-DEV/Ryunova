@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Organisation users — choose organisation{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Organisation users</h1>
+  <a href="{% url 'dashboard' %}" class="btn btn--secondary">Dashboard</a>
+</div>
+<p class="text-muted" style="max-width:640px;margin-bottom:1.25rem;">Choose an organisation to view members, grant <strong>organisation user-admin</strong> (invite rights for that org only), or add users from the sidebar.</p>
+
+{% if organisations %}
+<div class="surface surface--form" style="max-width:480px;">
+  <form method="get" action="" class="form form--grid">
+    <label class="field field--full">
+      <span class="field__label">Organisation</span>
+      <select name="organisation_id" class="input" required>
+        <option value="" disabled selected>Select…</option>
+        {% for o in organisations %}
+        <option value="{{ o.id }}">{{ o.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="field field--full">
+      <button type="submit" class="btn btn--primary">Continue</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<p class="text-muted">No organisations available. <a href="{% url 'create_organisation' %}">Create one</a> or sign in again.</p>
+{% endif %}
+{% endblock %}
