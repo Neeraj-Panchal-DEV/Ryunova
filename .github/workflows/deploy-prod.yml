@@ -1,4 +1,5 @@
 # RyuNova Platform — deploy to EC2 (aligned with dragon-latrobe_fintext secret names).
+# App root on the instance: /opt/apps/app_ryunova only (does not create FinText's /opt/apps/apps_fintext).
 # Shared PostgreSQL on the EC2 host; FastAPI :8010 and Django :8011 published on the instance.
 # FinText typically uses :8000 — keep ports separate on the same instance.
 #
@@ -18,6 +19,7 @@
 #   PROD_MEDIA_PUBLIC_BASE_URL — override S3 virtual-host URL (e.g. CloudFront)
 #   PROD_DB_HOST, PROD_DB_PORT, PROD_POSTGRES_DB_NAME, PROD_EMAIL_*, ECR_REGISTRY + AWS keys (see docs/DEPLOYMENT_EC2_ALB.md).
 # ECR: one repository (default prod/ryunova-channels); images are tagged api-<sha> and web-<sha>. Optional PROD_ECR_REPOSITORY overrides the repo name.
+# DB: deploy runs scripts/run_ryunova_migrations.sh on EC2 — creates DB if allowed, ensures app role, applies db/migrations/order.txt (see db/README.md).
 
 name: Deploy to Production
 
@@ -126,7 +128,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Clone or update repo on EC2 and validate DB
+      - name: Clone or update repo on EC2 and run DB migrations
         env:
           DEPLOY_BRANCH: ${{ env.DEPLOY_BRANCH }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,10 +144,10 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ env.EC2_USER }}@${{ env.EC2_HOST }} bash -s << REMOTE_SCRIPT
           set -euo pipefail
-          APP_DIR="/opt/apps/apps_ryunova"
+          APP_DIR="/opt/apps/app_ryunova"
+          sudo mkdir -p /opt/apps
           if [ ! -d "\$APP_DIR" ]; then
             echo "--- First-time: clone repo to \$APP_DIR ---"
-            sudo mkdir -p /opt/apps
             sudo git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "\$APP_DIR"
             sudo chown -R \$USER:\$USER "\$APP_DIR"
           fi
@@ -155,11 +157,17 @@ jobs:
           git fetch origin
           git reset --hard "origin/${DEPLOY_BRANCH}"
 
-          echo "--- Validate DB connectivity (shared cluster / same DB name as FinText is OK) ---"
-          docker pull postgres:14 >/dev/null 2>&1 || true
-          docker run --rm -e PGPASSWORD="${ADMIN_PW}" postgres:14 psql -h "${DB_HOST_VAL}" -p "${DB_PORT_VAL}" -U "${ADMIN_USER}" -d "${DB_NAME_VAL}" -v ON_ERROR_STOP=1 -c "SELECT 1 AS admin_ok;"
-          docker run --rm -e PGPASSWORD="${APPL_PW}" postgres:14 psql -h "${DB_HOST_VAL}" -p "${DB_PORT_VAL}" -U "${APPL_USER}" -d "${DB_NAME_VAL}" -v ON_ERROR_STOP=1 -c "SELECT 1 AS app_ok;"
-          echo "✅ Database checks passed"
+          echo "--- RyuNova: DB bootstrap + SQL migrations (see db/migrations/order.txt) ---"
+          export ADMIN_USER="${ADMIN_USER}"
+          export ADMIN_PW="${ADMIN_PW}"
+          export APPL_USER="${APPL_USER}"
+          export APPL_PW="${APPL_PW}"
+          export DB_HOST="${DB_HOST_VAL}"
+          export DB_PORT="${DB_PORT_VAL}"
+          export DB_NAME="${DB_NAME_VAL}"
+          export REPO_DIR="\$APP_DIR"
+          chmod +x "\$APP_DIR/scripts/run_ryunova_migrations.sh"
+          bash "\$APP_DIR/scripts/run_ryunova_migrations.sh"
           REMOTE_SCRIPT
 
       - name: Generate .env and upload
@@ -181,9 +189,9 @@ jobs:
         run: |
           python3 scripts/deploy_generate_ec2_env.py > /tmp/ryunova.env
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no /tmp/ryunova.env \
-            ${{ env.EC2_USER }}@${{ env.EC2_HOST }}:/opt/apps/apps_ryunova/.env
+            ${{ env.EC2_USER }}@${{ env.EC2_HOST }}:/opt/apps/app_ryunova/.env
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "chmod 600 /opt/apps/apps_ryunova/.env"
+            ${{ env.EC2_USER }}@${{ env.EC2_HOST }} "chmod 600 /opt/apps/app_ryunova/.env"
 
       - name: Start stack (ECR pull or local build)
         run: |
@@ -197,25 +205,25 @@ jobs:
             ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
               env REG="$REG" TAG="$TAG" AWS_REGION="$AWSR" ECR_REPO="$ECR_REPO" bash -s <<'EOF'
           set -euo pipefail
-          cd /opt/apps/apps_ryunova
+          cd /opt/apps/app_ryunova
           TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" --connect-timeout 2 2>/dev/null || true)
           if [ -n "$TOKEN" ]; then PRIV_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null); else PRIV_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null); fi
           if [ -n "$PRIV_IP" ]; then grep -q '^ALLOWED_HOSTS_EXTRA=' .env 2>/dev/null && sed -i.bak '/^ALLOWED_HOSTS_EXTRA=/d' .env; echo "ALLOWED_HOSTS_EXTRA=$PRIV_IP" >> .env; fi
           aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REG"
           export RYUNOVA_API_IMAGE="$REG/${ECR_REPO}:api-$TAG"
           export RYUNOVA_WEB_IMAGE="$REG/${ECR_REPO}:web-$TAG"
-          docker compose -p apps_ryunova -f docker-compose.app-only.yml pull
-          docker compose -p apps_ryunova -f docker-compose.app-only.yml up -d
+          docker compose -p ryunova -f docker-compose.app-only.yml pull
+          docker compose -p ryunova -f docker-compose.app-only.yml up -d
           EOF
           else
             ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} bash -s <<'EOF'
           set -euo pipefail
-          cd /opt/apps/apps_ryunova
+          cd /opt/apps/app_ryunova
           TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" --connect-timeout 2 2>/dev/null || true)
           if [ -n "$TOKEN" ]; then PRIV_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null); else PRIV_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null); fi
           if [ -n "$PRIV_IP" ]; then grep -q '^ALLOWED_HOSTS_EXTRA=' .env 2>/dev/null && sed -i.bak '/^ALLOWED_HOSTS_EXTRA=/d' .env; echo "ALLOWED_HOSTS_EXTRA=$PRIV_IP" >> .env; fi
-          docker compose -p apps_ryunova -f docker-compose.app-only.yml down || true
-          docker compose -p apps_ryunova -f docker-compose.app-only.yml up -d --build
+          docker compose -p ryunova -f docker-compose.app-only.yml down || true
+          docker compose -p ryunova -f docker-compose.app-only.yml up -d --build
           EOF
           fi
 

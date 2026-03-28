@@ -17,11 +17,11 @@ For high-level architecture, see `DEPLOYMENT_DOCKER_EC2.md`. **This file is the 
 | RyuNova **Django** | Docker | **8011** → web UI |
 | PostgreSQL | Host or RDS | **5432** (not from the internet) |
 
-Deploy directory (separate from FinText’s `/opt/apps/apps_fintext`):
+**Deploy directory (RyuNova only):** The RyuNova workflow creates **`/opt/apps`** if needed and uses **`/opt/apps/app_ryunova`** for the git checkout, `docker-compose.app-only.yml`, `.env`, and `data/uploads/`. It does **not** create **`/opt/apps/apps_fintext`** (FinText’s own deploy path is managed by the FinText repo’s workflow).
 
-- **`/opt/apps/apps_ryunova`** — git checkout, `docker-compose.app-only.yml`, `.env`, `data/uploads/`
+- **`/opt/apps/app_ryunova`** — RyuNova app root on the instance.
 
-Compose project: **`apps_ryunova`**.
+Compose project: **`ryunova`**.
 
 ---
 
@@ -88,7 +88,7 @@ The GitHub Actions workflow verifies **`http://<EC2>:8010/health`**.
 
 ## 5. Database
 
-Shared PostgreSQL is fine; apply `db/*.sql` manually (see `db/README.md`). The workflow does not run DDL.
+Shared PostgreSQL is fine (same **`latrobe_apps_db`** as FinText is OK). The deploy workflow runs **`scripts/run_ryunova_migrations.sh`** on EC2: it can **`CREATE DATABASE`** if the admin user is allowed (otherwise create the DB once by hand), ensures the app **role** exists, applies **`db/migrations/order.txt`** in order, and grants on **`ryunova.ryunova_*`** (schema **`ryunova`**). See **`db/README.md`** for adding future migration files.
 
 ---
 
@@ -96,7 +96,7 @@ Shared PostgreSQL is fine; apply `db/*.sql` manually (see `db/README.md`). The w
 
 **Production bucket (configured in deploy):** `arn:aws:s3:::ryunova-channels-organisations-media` (name **`ryunova-channels-organisations-media`**).
 
-The GitHub Actions deploy script writes **`AWS_S3_MEDIA_BUCKET`**, **`AWS_S3_REGION`**, and **`MEDIA_PUBLIC_BASE_URL`** into `/opt/apps/apps_ryunova/.env` unless you override with secrets:
+The GitHub Actions deploy script writes **`AWS_S3_MEDIA_BUCKET`**, **`AWS_S3_REGION`**, and **`MEDIA_PUBLIC_BASE_URL`** into `/opt/apps/app_ryunova/.env` unless you override with secrets:
 
 | Secret | Purpose |
 |--------|---------|
@@ -117,7 +117,7 @@ The GitHub Actions deploy script writes **`AWS_S3_MEDIA_BUCKET`**, **`AWS_S3_REG
 | Environment | Config files |
 |-------------|----------------|
 | **Local dev** | `backend/.env`, `web/.env` — see `docs/ENVIRONMENT.md` |
-| **EC2** | **`/opt/apps/apps_ryunova/.env`** — see `deploy/ec2.env.example` |
+| **EC2** | **`/opt/apps/app_ryunova/.env`** — see `deploy/ec2.env.example` |
 
 | Variable | Role |
 |----------|------|
@@ -142,10 +142,10 @@ Optional **`RYUNOVA_API_BASE_INTERNAL`:** leave unset if **`RYUNOVA_API_BASE`** 
 ## 9. Manual operations
 
 ```bash
-cd /opt/apps/apps_ryunova
-docker compose -p apps_ryunova -f docker-compose.app-only.yml ps
-docker compose -p apps_ryunova -f docker-compose.app-only.yml logs -f --tail=100 api
-docker compose -p apps_ryunova -f docker-compose.app-only.yml logs -f --tail=100 web
+cd /opt/apps/app_ryunova
+docker compose -p ryunova -f docker-compose.app-only.yml ps
+docker compose -p ryunova -f docker-compose.app-only.yml logs -f --tail=100 api
+docker compose -p ryunova -f docker-compose.app-only.yml logs -f --tail=100 web
 ```
 
 ---

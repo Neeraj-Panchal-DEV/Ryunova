@@ -43,12 +43,6 @@ For step-by-step Turnstile setup (dashboard, domains, `.env`, verification), see
 
 FinText uses the same style of variables (`EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`, `EMAIL_HOST_USER_NAME`, `SITE_DOMAIN` / `SITE_URL`). **Do not commit real passwords.** Copy structure from FinText’s `.env.example` into RyuNova’s `web/.env.example` / `backend/.env.example` and fill values only on the machine that deploys.
 
-## Database migration for email codes
+## Database schema
 
-After pulling changes that add sign-in codes, apply:
-
-```bash
-psql -U ryunova -d ryunova -f db/patch_login_otp.sql
-```
-
-(See `db/README.md`.)
+Apply **`db/mvp1_schema.sql`** once to an empty database (includes login codes, profile fields, and all MVP1 tables — see **`db/README.md`**).

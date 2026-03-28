@@ -18,7 +18,7 @@ Monorepo: **FastAPI** (`backend/`) + **Django** (`web/`), **PostgreSQL** databas
 
 ## 1. Database schema (once)
 
-The canonical MVP1 DDL is **`db/mvp1_schema.sql`** only (greenfield: users, roles, OAuth tokens, categories, brands, products, images — including `active`, descriptions, and audit columns). Run against an **empty** database (or accept that `CREATE TABLE IF NOT EXISTS` will skip tables that already exist).
+The canonical DDL is **`db/mvp1_schema.sql`** only (schema **`ryunova`**: users with profile + `public_code`, roles, OAuth, **login codes**, categories, brands, products, images, email verification tokens). Run against an **empty** database (or accept that `CREATE TABLE IF NOT EXISTS` will skip objects that already exist).
 
 ```bash
 # From repo root (dragon-ryunova/)

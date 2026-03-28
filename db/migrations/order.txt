@@ -1,0 +1,5 @@
+# Ordered SQL applied once per file (tracked in ryunova.ryunova_schema_migrations).
+# Greenfield: only mvp1_schema.sql (full DDL). Add new files to the END for future changes.
+# Paths are relative to the repo db/ directory.
+
+mvp1_schema.sql

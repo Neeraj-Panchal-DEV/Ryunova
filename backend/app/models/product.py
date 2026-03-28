@@ -36,7 +36,13 @@ class RyunovaProductMaster(Base):
     description: Mapped[str | None] = mapped_column(Text)
     condition: Mapped[ProductCondition] = mapped_column(
         "condition",
-        SAEnum(ProductCondition, name="ryunova_product_condition", native_enum=True, create_constraint=False),
+        SAEnum(
+            ProductCondition,
+            name="ryunova_product_condition",
+            native_enum=True,
+            create_constraint=False,
+            schema="ryunova",
+        ),
         nullable=False,
     )
     brand_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("ryunova_brands.id", ondelete="SET NULL"))

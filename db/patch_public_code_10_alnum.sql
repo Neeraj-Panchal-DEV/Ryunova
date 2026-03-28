@@ -1,3 +1,3 @@
--- Optional: existing databases may still have legacy public_code values (e.g. RN-… from patch_user_profile.sql).
+-- Optional: existing databases may still have legacy public_code values (e.g. RN-… prefix from older mvp1_schema.sql).
 -- New users receive 10-character A-Z0-9 codes from allocate_public_code().
 -- To reassign all users to the new format, run backend/scripts/backfill_public_codes.py (or keep legacy codes).

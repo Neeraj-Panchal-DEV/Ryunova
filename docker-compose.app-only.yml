@@ -1,7 +1,7 @@
 # App-only: PostgreSQL on the EC2 host (shared DB). FinText often uses :8000; RyuNova uses
 # 8010 (FastAPI) and 8011 (Django). ALB can target one or both ports via separate listeners / target groups.
 #
-# Deploy: /opt/apps/apps_ryunova — compose project apps_ryunova
+# Deploy: /opt/apps/app_ryunova — compose project ryunova
 
 services:
   api:

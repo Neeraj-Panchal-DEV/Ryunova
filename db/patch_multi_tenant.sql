@@ -1,5 +1,6 @@
--- After this patch, run db/patch_platform_org_admin.sql: is_system_user and is_platform_user are the
--- same flag — that patch adds is_platform_user, copies from is_system_user, drops is_system_user.
+-- LEGACY: targets **public** tables. Current installs use schema **ryunova** (see mvp1_schema.sql); do not run this on a greenfield ryunova-schema DB.
+--
+-- is_platform_user / user_admin_access live in mvp1_schema.sql; legacy is_system_user migration only below.
 --
 -- Multi-tenant organisations, user–org membership, platform users (column is_system_user here; same meaning as is_platform_user), email verification,
 -- tenant-scoped categories/brands/products (SKU unique per org).

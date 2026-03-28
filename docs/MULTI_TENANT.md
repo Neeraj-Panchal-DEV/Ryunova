@@ -11,7 +11,7 @@
 - **`is_platform_user`**: product/platform operators — see **all** organisations, optional `X-Organisation-Id` to scope; can **create organisations** (name, slug, description, logo) and **invite users to any org**; can **PATCH** `/admin/users/{id}` (`is_platform_user`, `user_admin_access`). At least one platform user must always exist.
 - **`user_admin_access`**: organisation **user admin** — can **invite users only into organisations they belong to** (same invite API; membership checked server-side). Cannot create organisations or grant platform access.
 
-**Legacy databases** that still have **`is_system_user`**: migrate to **`is_platform_user`** (same meaning) by copying the flag, then drop **`is_system_user`**, or diff your schema against **`db/mvp1_schema.sql`** / **`docs/DATABASE_SCHEMA.md`**. Incremental patch files are no longer shipped in this repo.
+**Legacy databases** that still have **`is_system_user`**: migrate to **`is_platform_user`** (same meaning) by copying the flag, then drop **`is_system_user`**, or diff your schema against **`db/mvp1_schema.sql`** / **`docs/DATABASE_SCHEMA.md`**. New installs use **`db/mvp1_schema.sql`** only (schema **`ryunova`**).
 
 ## Web (Django)
 

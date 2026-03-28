@@ -1,6 +1,6 @@
 # Database Schema – RyuNova Platform (Coffee Machine Product & Multi-Channel Listing Application)
 
-**Application name:** RyuNova Platform. All database objects use the **`ryunova_`** prefix (e.g. `ryunova_users`, `ryunova_listing_status`).
+**Application name:** RyuNova Platform. All application tables live in PostgreSQL schema **`ryunova`** with the **`ryunova_`** table name prefix (e.g. `ryunova.ryunova_users`).
 
 **Purpose:** PostgreSQL schema for product master data, per-channel overrides, user management, OAuth, channel registry and credentials, listing lifecycle (list/remove/sold), **inventory management**, **order import and fulfillment** (integrated place with source channel info), image storage (S3), and audit of changes after first listing.
 
