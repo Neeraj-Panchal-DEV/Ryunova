@@ -8,8 +8,9 @@ Public URLs in API JSON use API_PUBLIC_URL / RYUNOVA_API_PUBLIC (typically https
 
 Optional PROD_API_PUBLIC_HOST: if unset, defaults to api.<PROD_SITE_DOMAIN> for public API URLs.
 
-S3: default bucket ryunova-channels-organisations-media (override with PROD_AWS_S3_MEDIA_BUCKET).
-MEDIA_PUBLIC_BASE_URL is https://<bucket>.s3.<region>.amazonaws.com unless PROD_MEDIA_PUBLIC_BASE_URL is set (e.g. CloudFront).
+S3 bucket/region vars are reserved for future boto3 uploads. MEDIA_PUBLIC_BASE_URL: only set PROD_MEDIA_PUBLIC_BASE_URL
+when media is actually on S3/CloudFront. If unset, generated .env leaves it empty so public_media_url() uses
+API_PUBLIC_URL + /api/v1/media (files served from the API container disk — see docker-compose volume).
 
 SMTP: defaults to smtp.hostinger.com:587 + TLS. Set EMAIL_HOST_VAL / EMAIL_PORT_VAL / EMAIL_USE_TLS_VAL from
 GitHub Actions env (see deploy-prod.yml). FastAPI and Django both read EMAIL_* from the same .env.
@@ -54,7 +55,8 @@ def main() -> None:
     if media_public_override:
         media_public_base = media_public_override.rstrip("/")
     else:
-        media_public_base = f"https://{s3_bucket}.s3.{aws_region}.amazonaws.com"
+        # Avatars/products are stored on API disk, not S3, until uploads are wired — do not point browsers at S3.
+        media_public_base = ""
 
     host_only = site_domain.split(":")[0]
     site_url = f"https://{host_only}"

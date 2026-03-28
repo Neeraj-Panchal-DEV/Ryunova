@@ -97,9 +97,11 @@ Image tags: **`api-<git-sha>`** and **`web-<git-sha>`** in the same repository.
 
 ---
 
-## 8. Media (S3)
+## 8. Media (avatars, uploads)
 
-Default bucket name **`ryunova-channels-organisations-media`** (override with **`PROD_AWS_S3_MEDIA_BUCKET`**). Optional **`PROD_MEDIA_PUBLIC_BASE_URL`** for CloudFront. EC2 IAM needs S3 permissions for uploads when implemented. See **`backend/app/media_urls.py`**.
+**Current behavior:** FastAPI stores files under **`/app/uploads`** (bind-mounted on EC2 as **`data/uploads`**). Public URLs in JSON are **`https://<api-host>/api/v1/media/<key>`** — set **`MEDIA_PUBLIC_BASE_URL` empty** (deploy default) so **`backend/app/media_urls.py`** does not point the browser at S3. If **`MEDIA_PUBLIC_BASE_URL`** is set to a bucket or CloudFront URL, objects must **exist** there; the app does not upload avatars to S3 yet.
+
+**Future S3:** Bucket name **`ryunova-channels-organisations-media`** (override **`PROD_AWS_S3_MEDIA_BUCKET`**). Set **`PROD_MEDIA_PUBLIC_BASE_URL`** only after boto3 uploads and bucket policy/public access are aligned. EC2 IAM needs S3 permissions when implemented.
 
 ---
 
