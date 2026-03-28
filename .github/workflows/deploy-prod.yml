@@ -38,6 +38,8 @@ env:
   EC2_HOST: ${{ secrets.PROD_EC2_HOST || secrets.EC2_HOST_PROD }}
   EC2_USER: ${{ secrets.PROD_EC2_USER }}
   DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || 'prod' }}
+  # secrets are not allowed in step `if:` — expose a string flag here instead
+  DO_ECR_PUSH: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
 
 jobs:
   deploy:
@@ -97,7 +99,7 @@ jobs:
           DJANGO_SECRET_KEY=ci-check-not-for-prod DEBUG=true python web/manage.py check
 
       - name: Configure AWS (ECR push)
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        if: ${{ env.DO_ECR_PUSH == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -105,11 +107,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
 
       - name: Log in to Amazon ECR
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        if: ${{ env.DO_ECR_PUSH == 'true' }}
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push Docker images to ECR
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        if: ${{ env.DO_ECR_PUSH == 'true' }}
         env:
           REGISTRY: ${{ secrets.ECR_REGISTRY }}
           TAG: ${{ github.sha }}
