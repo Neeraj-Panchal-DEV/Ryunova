@@ -10,6 +10,9 @@ Optional PROD_API_PUBLIC_HOST: if unset, defaults to api.<PROD_SITE_DOMAIN> for 
 
 S3: default bucket ryunova-channels-organisations-media (override with PROD_AWS_S3_MEDIA_BUCKET).
 MEDIA_PUBLIC_BASE_URL is https://<bucket>.s3.<region>.amazonaws.com unless PROD_MEDIA_PUBLIC_BASE_URL is set (e.g. CloudFront).
+
+SMTP: defaults to smtp.hostinger.com:587 + TLS. Set EMAIL_HOST_VAL / EMAIL_PORT_VAL / EMAIL_USE_TLS_VAL from
+GitHub Actions env (see deploy-prod.yml). FastAPI and Django both read EMAIL_* from the same .env.
 """
 from __future__ import annotations
 
@@ -38,6 +41,10 @@ def main() -> None:
     django_secret = os.environ.get("DJANGO_SECRET_KEY_VAL", "")
     email_pw = os.environ.get("EMAIL_HOST_PASSWORD_VAL", "") or ""
     email_user = os.environ.get("EMAIL_HOST_USER_VAL", "") or ""
+    # Same Hostinger-style SMTP as FinText; override host/port via GitHub secrets when needed
+    email_host = (os.environ.get("EMAIL_HOST_VAL") or "").strip() or "smtp.hostinger.com"
+    email_port = (os.environ.get("EMAIL_PORT_VAL") or "").strip() or "587"
+    email_use_tls = (os.environ.get("EMAIL_USE_TLS_VAL") or "true").strip().lower() in ("1", "true", "yes")
     default_from = (os.environ.get("DEFAULT_FROM_EMAIL_VAL") or "").strip() or email_user
     from_name = os.environ.get("EMAIL_FROM_NAME_VAL", "") or "RyuNova Platform"
 
@@ -85,9 +92,9 @@ def main() -> None:
         f'ALLOWED_HOSTS="{esc(allowed)}"',
         f'CSRF_TRUSTED_ORIGINS="{esc(csrf)}"',
         f'SITE_DOMAIN="{esc(host_only)}"',
-        'EMAIL_HOST="smtp.hostinger.com"',
-        'EMAIL_PORT="587"',
-        'EMAIL_USE_TLS="true"',
+        f'EMAIL_HOST="{esc(email_host)}"',
+        f'EMAIL_PORT="{esc(email_port)}"',
+        f'EMAIL_USE_TLS="{"true" if email_use_tls else "false"}"',
         f'EMAIL_HOST_USER="{esc(email_user)}"',
         f'EMAIL_HOST_PASSWORD="{esc(email_pw)}"',
         f'DEFAULT_FROM_EMAIL="{esc(default_from)}"',

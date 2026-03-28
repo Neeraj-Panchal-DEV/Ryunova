@@ -17,9 +17,15 @@
 #   PROD_AWS_S3_MEDIA_BUCKET — defaults to ryunova-channels-organisations-media if unset
 #   AWS_REGION or PROD_AWS_REGION — S3 URL region (default ap-southeast-2)
 #   PROD_MEDIA_PUBLIC_BASE_URL — override S3 virtual-host URL (e.g. CloudFront)
-#   PROD_DB_HOST, PROD_DB_PORT, PROD_POSTGRES_DB_NAME, PROD_EMAIL_*, ECR_REGISTRY + AWS keys (see docs/DEPLOYMENT_EC2_ALB.md).
+#   PROD_DB_HOST, PROD_DB_PORT, PROD_POSTGRES_DB_NAME, PROD_EMAIL_* (or EMAIL_* fallbacks — same values as FinText), ECR + AWS keys (see docs/DEPLOYMENT_EC2_ALB.md).
 # ECR: one repository (default prod/ryunova-channels); images are tagged api-<sha> and web-<sha>. Optional PROD_ECR_REPOSITORY overrides the repo name.
 # DB: deploy runs scripts/run_ryunova_migrations.sh on EC2 — creates DB if allowed, ensures app role, applies db/migrations/order.txt (see db/README.md).
+#
+# Django (web): web/Dockerfile runs `manage.py migrate` at container start. The workflow also runs migrate via
+#   `docker compose exec web` after compose up so django_session exists even when an older image omits migrate in CMD.
+#
+# First admin user (manual, not in CI): docker exec ryunova_api python scripts/seed_user.py email@domain 'password' 'Name'
+#   (from backend/ in repo). Login requires email_verified_at — seed_user sets it + is_platform_user (see LOCAL_DEVELOPMENT.md).
 
 name: Deploy to Production
 
@@ -181,10 +187,14 @@ jobs:
           SITE_DOMAIN_VAL: ${{ secrets.PROD_SITE_DOMAIN }}
           API_HOST_VAL: ${{ secrets.PROD_API_PUBLIC_HOST }}
           DJANGO_SECRET_KEY_VAL: ${{ secrets.DJANGO_SECRET_KEY }}
-          EMAIL_HOST_PASSWORD_VAL: ${{ secrets.PROD_EMAIL_HOST_PASSWORD || '' }}
-          EMAIL_HOST_USER_VAL: ${{ secrets.PROD_EMAIL_HOST_USER || '' }}
-          DEFAULT_FROM_EMAIL_VAL: ${{ secrets.PROD_DEFAULT_FROM_EMAIL || '' }}
-          EMAIL_FROM_NAME_VAL: ${{ secrets.PROD_EMAIL_FROM_NAME || '' }}
+          # SMTP: same pattern as dragon-latrobe_fintext — copy credentials into this repo’s secrets (or org-level secrets)
+          EMAIL_HOST_VAL: ${{ secrets.PROD_EMAIL_HOST || secrets.EMAIL_HOST || '' }}
+          EMAIL_PORT_VAL: ${{ secrets.PROD_EMAIL_PORT || secrets.EMAIL_PORT || '587' }}
+          EMAIL_USE_TLS_VAL: ${{ secrets.PROD_EMAIL_USE_TLS || secrets.EMAIL_USE_TLS || 'true' }}
+          EMAIL_HOST_PASSWORD_VAL: ${{ secrets.PROD_EMAIL_HOST_PASSWORD || secrets.EMAIL_HOST_PASSWORD || '' }}
+          EMAIL_HOST_USER_VAL: ${{ secrets.PROD_EMAIL_HOST_USER || secrets.EMAIL_HOST_USER || '' }}
+          DEFAULT_FROM_EMAIL_VAL: ${{ secrets.PROD_DEFAULT_FROM_EMAIL || secrets.DEFAULT_FROM_EMAIL || '' }}
+          EMAIL_FROM_NAME_VAL: ${{ secrets.PROD_EMAIL_FROM_NAME || secrets.EMAIL_FROM_NAME || '' }}
           AWS_S3_MEDIA_BUCKET_VAL: ${{ secrets.PROD_AWS_S3_MEDIA_BUCKET }}
           AWS_S3_REGION_VAL: ${{ secrets.AWS_REGION || secrets.PROD_AWS_REGION || 'ap-southeast-2' }}
           MEDIA_PUBLIC_BASE_URL_VAL: ${{ secrets.PROD_MEDIA_PUBLIC_BASE_URL }}
@@ -228,6 +238,22 @@ jobs:
           docker compose -p ryunova -f docker-compose.app-only.yml up -d --build
           EOF
           fi
+
+      - name: Run Django migrations (web container)
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+            'cd /opt/apps/app_ryunova
+            for i in $(seq 1 30); do
+              if docker compose -p ryunova -f docker-compose.app-only.yml exec -T web python manage.py migrate --noinput; then
+                echo "✅ Django migrate complete"
+                exit 0
+              fi
+              echo "waiting for web ($i/30)..."
+              sleep 2
+            done
+            echo "❌ Django migrate failed"
+            exit 1'
 
       - name: Verify API health
         run: |

@@ -8,7 +8,7 @@ Multi-channel listing and product hub — **Phase 0 + MVP1** implemented here.
 | Admin UI | Django (calls API with Bearer token) | `web/` |
 | Schema | `ryunova_*` tables | `db/mvp1_schema.sql` |
 
-Design docs live in [`docs/`](docs/README.md). **MVP1 build summary (what was delivered):** [docs/MVP1_BUILD_AND_DELIVERY.md](docs/MVP1_BUILD_AND_DELIVERY.md).
+Design docs live in [`docs/`](docs/README.md). **MVP1 build summary (what was delivered):** [docs/MVP1_BUILD_AND_DELIVERY.md](docs/MVP1_BUILD_AND_DELIVERY.md). **Production deployment (EC2, ALB):** [docs/DEPLOYMENT_EC2_ALB.md](docs/DEPLOYMENT_EC2_ALB.md).
 
 ## Quick start
 

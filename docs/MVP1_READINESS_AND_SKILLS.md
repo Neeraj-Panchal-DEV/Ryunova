@@ -18,7 +18,7 @@ This document answers: (1) **Do we have all information to build MVP1?** (2) **W
 | **Tech stack** | [README.md](README.md), architecture plans | Confirmed: **FastAPI** (API), **Django** (frontend), PostgreSQL, Redis, Celery. For MVP1 you can defer Redis/Celery until MVP2 (listing jobs). |
 | **API scope (MVP1)** | Architecture + schema | Product CRUD, Categories CRUD, Auth (login/session or JWT). Endpoints derivable from schema (e.g. GET/POST /products, GET/PUT /products/{id}, GET/POST /categories, POST /auth/login). |
 | **Frontend scope (MVP1)** | Proposal plan + [UX_REQUIREMENTS_AND_STANDARDS.md](UX_REQUIREMENTS_AND_STANDARDS.md) | Product list (compact table), product add/edit form, category selection, login. Minimalist, compact layout. |
-| **Deployment (later)** | [DEPLOYMENT_DOCKER_EC2.md](DEPLOYMENT_DOCKER_EC2.md) | For MVP1 you can run locally (see below); Docker/EC2 when you deploy. |
+| **Deployment (later)** | [DEPLOYMENT_EC2_ALB.md](DEPLOYMENT_EC2_ALB.md) | For MVP1 you can run locally (see below); EC2/ALB when you deploy. |
 | **Local database** | You | You have PostgreSQL installed locally. |
 
 ### 1.2 MVP1 schema subset (create first)
@@ -32,7 +32,7 @@ Copy the `CREATE TYPE` and `CREATE TABLE` (and indexes) for these from [DATABASE
 
 ### 1.3 Optional gap (nice to have before coding)
 
-- **Local development one-pager:** One page describing how to run FastAPI + Django against local PostgreSQL (e.g. `.env` with `DATABASE_URL`, `python -m uvicorn`, `python manage.py runserver`, or Docker Compose for local only). The [DEPLOYMENT_DOCKER_EC2.md](DEPLOYMENT_DOCKER_EC2.md) is production-oriented; a short “Run locally” section in README or a separate `LOCAL_DEVELOPMENT.md` would round things off. Not blocking: any developer can infer this from the stack.
+- **Local development one-pager:** See **[LOCAL_DEVELOPMENT.md](../LOCAL_DEVELOPMENT.md)**. Production: **[DEPLOYMENT_EC2_ALB.md](DEPLOYMENT_EC2_ALB.md)**.
 
 **Conclusion:** You have enough to build MVP1. Create the MVP1 schema subset in your local DB, then implement FastAPI (Product + Categories + Auth) and Django (product list, product form, login) against it.
 
@@ -65,7 +65,7 @@ Copy the `CREATE TYPE` and `CREATE TABLE` (and indexes) for these from [DATABASE
 |-------|--------|-----|
 | **Redis** | Basic | Celery broker for listing jobs (MVP2). |
 | **Celery** | Basic | Listing Orchestrator worker (MVP2). |
-| **Docker / Docker Compose** | Working | Local parity and deployment per [DEPLOYMENT_DOCKER_EC2.md](DEPLOYMENT_DOCKER_EC2.md). |
+| **Docker / Docker Compose** | Working | Local parity and deployment per [DEPLOYMENT_EC2_ALB.md](DEPLOYMENT_EC2_ALB.md). |
 | **Channel APIs (eBay, Shopify, etc.)** | Per channel | OAuth/API keys, rate limits, payload mapping for adapters (MVP2). |
 | **Git / GitHub Actions** | Working | Version control and deploy to EC2 (when you deploy). |
 

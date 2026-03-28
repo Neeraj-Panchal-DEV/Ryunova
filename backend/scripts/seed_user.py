@@ -3,6 +3,7 @@
 import os
 import sys
 import uuid
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -27,6 +28,7 @@ def main() -> None:
         if existing:
             print(f"User already exists: {email}")
             return
+        now = datetime.now(timezone.utc)
         user = RyunovaUser(
             id=uuid.uuid4(),
             public_code=allocate_public_code(db),
@@ -34,6 +36,8 @@ def main() -> None:
             display_name=display,
             password_hash=hash_password(password),
             is_active=True,
+            email_verified_at=now,  # required by POST /auth/login; no verification email for CLI seed
+            is_platform_user=True,  # can use app before any organisation exists
         )
         db.add(user)
         db.flush()

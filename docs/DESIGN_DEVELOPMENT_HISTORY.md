@@ -13,7 +13,7 @@ This document sequences the main queries and requests that shaped the RyuNova Pl
 ### 1. Design and architecture (high-level)
 
 - **Request:** Design and architecture for an application to manage a coffee machine product database with auto-listing to eBay, Facebook Marketplace, Gumtree, and optionally others when a “list” flag is set; engines for listing, sales, and delisting; and admin interfaces. High-level framework first.
-- **Outcome:** High-level architecture plan (product DB, listing/delist/sales engines, channel adapters, job queue). Tech stack confirmed: **FastAPI** (API), **Django** (frontend/admin UI), PostgreSQL, Celery/Redis. Document: architecture plan in [plans/](plans/) (RyuNova Platform Architecture).
+- **Outcome:** High-level architecture plan (product DB, listing/delist/sales engines, channel adapters, job queue). Tech stack confirmed: **FastAPI** (API), **Django** (frontend/admin UI), PostgreSQL, Celery/Redis (workers optional for later MVP).
 
 ---
 
@@ -77,7 +77,7 @@ The application can be extended (e.g. more channels, reporting, 3PL integration,
 | Document | Description |
 |----------|-------------|
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Full PostgreSQL schema (RyuNova Platform; ryunova_-prefixed tables, enums, indexes, CRUD mapping). |
-| [plans/](plans/) | RyuNova Platform architecture and microservice plans (listing, channel integration, order review and fulfillment; key modules; design components). |
+| [DEPLOYMENT_EC2_ALB.md](DEPLOYMENT_EC2_ALB.md) | Production deployment (EC2, ALB, GitHub Actions). |
 
 ---
 

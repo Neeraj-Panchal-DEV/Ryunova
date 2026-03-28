@@ -134,6 +134,7 @@ Defined in **`web/catalog/urls.py`**; views in **`web/catalog/views.py`** (API h
 | **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)** | Full target schema (MVP1 + future); reference for extensions |
 | **[MVP1_READINESS_AND_SKILLS.md](MVP1_READINESS_AND_SKILLS.md)** | Readiness checklist and skills |
 | **[UX_REQUIREMENTS_AND_STANDARDS.md](UX_REQUIREMENTS_AND_STANDARDS.md)** | UI principles (compact, minimalist) |
+| **[DEPLOYMENT_EC2_ALB.md](DEPLOYMENT_EC2_ALB.md)** | Production: EC2, ALB, GitHub Actions |
 
 ---
 

@@ -9,6 +9,8 @@ Monorepo: **FastAPI** (`backend/`) + **Django** (`web/`), **PostgreSQL** databas
 
 `0.0.0.0` binds all interfaces so **other devices on your LAN** can reach the app (see below). For laptop-only dev you can use `127.0.0.1` instead of `0.0.0.0`.
 
+**Production (AWS EC2, ALB, GitHub Actions):** see **`docs/DEPLOYMENT_EC2_ALB.md`** — not this file.
+
 **Important:** `manage.py` lives only under **`web/`**. If you see `can't open file '.../backend/manage.py'`, you ran Django from `backend/` — use `cd web` first. Each app can use its own `.venv` inside `backend/` and `web/`.
 
 ## Prerequisites

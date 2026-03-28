@@ -1,30 +1,37 @@
-# RyuNova Platform – Design and development
+# RyuNova Platform — documentation
 
-This folder contains all **RyuNova Platform** design and development documentation: schema, design history, and architecture plans.
+**Application:** RyuNova Platform — multi-channel listing and product hub (FastAPI + Django).
 
-**Application name:** RyuNova Platform  
-**Purpose:** Listing management, channel integration, order review and fulfillment across multiple sales channels (primary use case: coffee machine and related products).
+## Deployment and operations
 
-**Technology stack (confirmed):** **FastAPI** for the API backend; **Django** for the frontend (admin UI).
+| Document | Description |
+|----------|-------------|
+| **[DEPLOYMENT_EC2_ALB.md](DEPLOYMENT_EC2_ALB.md)** | **Production:** EC2, ALB, GitHub Actions, secrets, Postgres migrations, Django, bootstrap user, troubleshooting |
+| [DEPLOYMENT_DOCKER_EC2.md](DEPLOYMENT_DOCKER_EC2.md) | Short pointer to the runbook above |
+| [ENVIRONMENT.md](ENVIRONMENT.md) | Local `web/.env` vs `backend/.env` |
+| [EMAIL_SETTINGS.md](EMAIL_SETTINGS.md) | SMTP / transactional email |
 
-## Contents
+## Schema and product
 
-| Item | Description |
-|------|-------------|
-| [MVP1_BUILD_AND_DELIVERY.md](MVP1_BUILD_AND_DELIVERY.md) | **MVP1 handoff:** what was built (DB, API, Django UI, docs), scope in/out, smoke checklist. |
-| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Full PostgreSQL schema: ryunova_-prefixed tables, enums, indexes, CRUD mapping, extensibility. |
-| [DESIGN_DEVELOPMENT_HISTORY.md](DESIGN_DEVELOPMENT_HISTORY.md) | Chronological sequence of design requests and outcomes; key modules. |
-| [UX_REQUIREMENTS_AND_STANDARDS.md](UX_REQUIREMENTS_AND_STANDARDS.md) | UX requirements and standards: minimalist (Uber-inspired), compact layout, components, accessibility. |
-| [DEPLOYMENT_DOCKER_EC2.md](DEPLOYMENT_DOCKER_EC2.md) | End deployment: Docker/Docker Compose on single EC2, GitHub Actions, ryunova.dragonandpeaches.com.au; list of services and suggested images. |
-| [MVP1_READINESS_AND_SKILLS.md](MVP1_READINESS_AND_SKILLS.md) | MVP1 readiness (do we have everything?); MVP1 schema subset; skills needed to build and run the application. |
-| [CONVERSATION_HISTORY.md](CONVERSATION_HISTORY.md) | Conversation history: main topics and decisions from design and documentation work (for review and reference). |
-| [plans/](plans/) | Architecture and microservice plans (RyuNova Platform Architecture, Microservice Architecture). |
-| [plans/ryunova_build_proposal_content.plan.md](plans/ryunova_build_proposal_content.plan.md) | Build proposal content plan (assurance, agile, 2-month MVPs). |
-| [RyuNova_Build_Proposal_Content_PRINT.html](RyuNova_Build_Proposal_Content_PRINT.html) | Print-ready HTML of the build proposal content plan. |
+| Document | Description |
+|----------|-------------|
+| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Full PostgreSQL schema (`ryunova_*`) |
+| [MULTI_TENANT.md](MULTI_TENANT.md) | Organisations, platform vs org admin, bootstrap |
+| [MVP1_BUILD_AND_DELIVERY.md](MVP1_BUILD_AND_DELIVERY.md) | MVP1 scope and handoff |
+| [SERVICES.md](SERVICES.md) | Service overview |
+| [TURNSTILE.md](TURNSTILE.md) | Optional Cloudflare Turnstile on login |
 
-## Plans
+## UX and design history
 
-- **RyuNova Platform Architecture** – High-level design, goals, key modules, core components, data model, technology options, flow, channel integration.
-- **RyuNova Platform Microservice Architecture** – Microservice boundaries, recommended services, communication (sync/async), document updates.
+| Document | Description |
+|----------|-------------|
+| [UX_REQUIREMENTS_AND_STANDARDS.md](UX_REQUIREMENTS_AND_STANDARDS.md) | UX standards |
+| [DESIGN_DEVELOPMENT_HISTORY.md](DESIGN_DEVELOPMENT_HISTORY.md) | How the design evolved |
 
-Plans under `plans/` are copies for reference; Cursor may also keep plan state under `.cursor/plans/` outside this repo.
+## Other
+
+| Document | Description |
+|----------|-------------|
+| [MVP1_READINESS_AND_SKILLS.md](MVP1_READINESS_AND_SKILLS.md) | Readiness checklist |
+
+Local development: **[../LOCAL_DEVELOPMENT.md](../LOCAL_DEVELOPMENT.md)** (repo root).

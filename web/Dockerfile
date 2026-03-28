@@ -21,4 +21,5 @@ EXPOSE 8011
 ENV USE_WHITENOISE=true
 ENV DEBUG=false
 
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && exec gunicorn ryunova_web.wsgi:application --bind 0.0.0.0:8011 --timeout 120 --workers 3"]
+# migrate: session-backed login (human challenge) needs django_session; homepage alone may not touch DB
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && exec gunicorn ryunova_web.wsgi:application --bind 0.0.0.0:8011 --timeout 120 --workers 3"]
