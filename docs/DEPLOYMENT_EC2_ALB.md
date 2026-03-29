@@ -63,6 +63,7 @@ Single source of truth for **deploying RyuNova to AWS**: EC2, Application Load B
 |--------|------|
 | **`PROD_SITE_DOMAIN`** | Public **Django** hostname only (no `https://`) — drives **`SITE_URL`**, **`ALLOWED_HOSTS`**, **`CSRF_TRUSTED_ORIGINS`**, CORS hints |
 | **`PROD_API_PUBLIC_HOST`** | Optional; else defaults to **`api.<PROD_SITE_DOMAIN>`** for **`API_PUBLIC_URL`** / **`RYUNOVA_API_PUBLIC`** |
+| **`PROD_USE_S3_MEDIA`** | Optional; set to **`true`** to store **`orgs/`** + **`users/`** keys in S3 (EC2 needs IAM instance profile for the bucket) |
 | **`ECR_REGISTRY`** + AWS keys | Optional; push/pull images. Default ECR repo name **`prod/ryunova-channels`** unless **`PROD_ECR_REPOSITORY`** is set |
 
 Image tags: **`api-<git-sha>`** and **`web-<git-sha>`** in the same repository.
@@ -102,13 +103,23 @@ Image tags: **`api-<git-sha>`** and **`web-<git-sha>`** in the same repository.
 
 ---
 
-## 8. Media (avatars, uploads)
+## 8. Media (disk vs S3)
 
-**Current behavior:** FastAPI stores files under **`/app/uploads`** (bind-mounted on EC2 as **`data/uploads`**). Public URLs in JSON are **`https://<api-host>/api/v1/media/<key>`** — set **`MEDIA_PUBLIC_BASE_URL` empty** (deploy default) so **`backend/app/media_urls.py`** does not point the browser at S3. If **`MEDIA_PUBLIC_BASE_URL`** is set to a bucket or CloudFront URL, objects must **exist** there; the app does not upload avatars to S3 yet.
+**Object keys (always):**
 
-**ALB:** The **`<api-host>`** in those URLs must resolve and reach **port 8010** (see §2). **Do not** send `api.*` to **8011**.
+| Prefix | Content |
+|--------|---------|
+| **`orgs/<organisation_id>/products/<product_id>/...`** | Product images / video |
+| **`orgs/<organisation_id>/branding/...`** | Organisation logo |
+| **`users/<user_id>/avatars/...`** | Profile photo |
 
-**Future S3:** Bucket name **`ryunova-channels-organisations-media`** (override **`PROD_AWS_S3_MEDIA_BUCKET`**). Set **`PROD_MEDIA_PUBLIC_BASE_URL`** only after boto3 uploads and bucket policy/public access are aligned. EC2 IAM needs S3 permissions when implemented.
+**Default (`USE_S3_MEDIA=false`):** Files live under **`/app/uploads/<key>`** on the API container (host: **`data/uploads`**). Public URLs are **`https://<api-host>/api/v1/media/<key>`**. **`MEDIA_PUBLIC_BASE_URL`** is empty in generated `.env`.
+
+**S3 (`USE_S3_MEDIA=true`):** Set GitHub secret **`PROD_USE_S3_MEDIA`** to **`true`**. Deploy sets **`USE_S3_MEDIA=true`**, **`MEDIA_PUBLIC_BASE_URL`** to the bucket virtual-host URL (unless **`PROD_MEDIA_PUBLIC_BASE_URL`** overrides, e.g. CloudFront). Attach an **IAM instance profile** to the EC2 instance with **`s3:PutObject`**, **`s3:DeleteObject`**, **`s3:GetObject`** on **`arn:aws:s3:::<bucket>/*`**. Bucket policy: allow **`s3:GetObject`** for public reads on that prefix (or serve via CloudFront) so `<img src>` works.
+
+**Legacy rows** in the DB may still use old keys (`products/...`, `avatars/...`, `org-logos/...`) on disk — those URLs keep using **`/api/v1/media/...`** until re-uploaded.
+
+**ALB:** For disk mode, **`api.*` → 8010** (§2). For S3 mode, browsers load files from the bucket URL in **`MEDIA_PUBLIC_BASE_URL`** for **`orgs/`** and **`users/`** keys.
 
 ---
 

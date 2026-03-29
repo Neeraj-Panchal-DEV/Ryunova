@@ -5,7 +5,6 @@ import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -16,6 +15,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.mail_outbound import send_email_change_verification_email, send_login_code_email
 from app.profile_patch import merge_social_handles
+from app.media_storage import delete_key as delete_media_key, write_bytes as write_media_bytes
 from app.media_urls import public_media_url
 from app.dependencies import CurrentUser
 from app.models.login_code import RyunovaLoginCode
@@ -117,12 +117,8 @@ def _user_to_read(user: RyunovaUser) -> UserRead:
     )
 
 
-def _delete_avatar_file(upload_root: Path, key: str | None) -> None:
-    if not key:
-        return
-    p = upload_root / key
-    if p.is_file():
-        p.unlink(missing_ok=True)
+def _delete_avatar_file(key: str | None) -> None:
+    delete_media_key(key)
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -335,8 +331,6 @@ async def upload_avatar(
     user: CurrentUser,
     file: UploadFile = File(...),
 ) -> UserRead:
-    settings = get_settings()
-    upload_root = Path(settings.upload_dir)
     content_type = _normalize_content_type(file.content_type)
     if content_type == "image/jpg":
         content_type = "image/jpeg"
@@ -346,32 +340,33 @@ async def upload_avatar(
             detail="Unsupported file type. Use JPEG, PNG, GIF, or WebP.",
         )
     ext = _avatar_extension(content_type)
-    s3_key = f"avatars/{user.id}/{uuid.uuid4().hex}_avatar{ext}"
-    dest_dir = upload_root / Path(s3_key).parent
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_path = upload_root / s3_key
+    s3_key = f"users/{user.id}/avatars/{uuid.uuid4().hex}_avatar{ext}"
+    chunks: list[bytes] = []
     size = 0
     try:
-        with dest_path.open("wb") as out:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                size += len(chunk)
-                if size > _MAX_AVATAR_BYTES:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"Avatar too large (max {_MAX_AVATAR_BYTES // (1024 * 1024)} MB).",
-                    )
-                out.write(chunk)
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > _MAX_AVATAR_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Avatar too large (max {_MAX_AVATAR_BYTES // (1024 * 1024)} MB).",
+                )
+            chunks.append(chunk)
     except HTTPException:
-        if dest_path.is_file():
-            dest_path.unlink(missing_ok=True)
+        raise
+    data = b"".join(chunks)
+    try:
+        write_media_bytes(s3_key, data, content_type)
+    except Exception:
+        delete_media_key(s3_key)
         raise
 
     old_key = user.avatar_s3_key
     user.avatar_s3_key = s3_key
     db.commit()
-    _delete_avatar_file(upload_root, old_key)
+    _delete_avatar_file(old_key)
     db.refresh(user)
     return _user_to_read(user)

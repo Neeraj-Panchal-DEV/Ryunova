@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 from typing import Annotated
 
 import httpx
@@ -9,10 +8,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.config import get_settings
 from app.database import get_db
 from app.dependencies import CurrentUser
 from app.models.brand import RyunovaBrand
+from app.media_storage import delete_key as delete_media_key, write_bytes as write_media_bytes
 from app.org_access import OrganisationContextDep, assert_product_in_context
 from app.models.category import RyunovaCategory
 from app.models.product import ProductCondition, RyunovaProductImage, RyunovaProductMaster
@@ -309,16 +308,16 @@ def delete_product(
     db: Annotated[Session, Depends(get_db)],
     ctx: OrganisationContextDep,
 ) -> None:
-    p = db.get(RyunovaProductMaster, product_id)
+    p = db.scalar(
+        select(RyunovaProductMaster)
+        .options(selectinload(RyunovaProductMaster.images))
+        .where(RyunovaProductMaster.id == product_id)
+    )
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
     assert_product_in_context(db, ctx, p.organisation_id)
-    settings = get_settings()
-    upload_root = Path(settings.upload_dir)
     for img in list(p.images):
-        path = upload_root / img.s3_key
-        if path.is_file():
-            path.unlink()
+        delete_media_key(img.s3_key)
     db.delete(p)
     db.commit()
 
@@ -355,13 +354,8 @@ async def upload_product_image(
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
     assert_product_in_context(db, ctx, p.organisation_id)
-    settings = get_settings()
-    upload_root = Path(settings.upload_dir)
     safe_name = file.filename or "upload"
-    s3_key = f"products/{product_id}/{uuid.uuid4().hex}_{safe_name}"
-    dest_dir = upload_root / Path(s3_key).parent
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_path = upload_root / s3_key
+    s3_key = f"orgs/{p.organisation_id}/products/{product_id}/{uuid.uuid4().hex}_{safe_name}"
     content_type = _normalize_content_type(file.content_type)
     if content_type == "image/jpg":
         content_type = "image/jpeg"
@@ -372,23 +366,27 @@ async def upload_product_image(
         )
     media_type = _media_type_from_content_type(content_type)
     max_bytes = _max_bytes_for_media(media_type)
+    chunks: list[bytes] = []
     size = 0
     try:
-        with dest_path.open("wb") as out:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                size += len(chunk)
-                if size > max_bytes:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"File too large (max {max_bytes // (1024 * 1024)} MB for {media_type}s).",
-                    )
-                out.write(chunk)
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > max_bytes:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File too large (max {max_bytes // (1024 * 1024)} MB for {media_type}s).",
+                )
+            chunks.append(chunk)
     except HTTPException:
-        if dest_path.is_file():
-            dest_path.unlink(missing_ok=True)
+        raise
+    data = b"".join(chunks)
+    try:
+        write_media_bytes(s3_key, data, content_type)
+    except Exception:
+        delete_media_key(s3_key)
         raise
 
     want_cover = _parse_cover_form(is_cover)
@@ -431,7 +429,7 @@ async def import_product_image_from_url(
     user: CurrentUser,
     ctx: OrganisationContextDep,
 ) -> ProductImageRead:
-    """Download an image from a public URL, verify it is an image, store under upload_dir."""
+    """Download an image from a public URL, verify it is an image, store via media_storage."""
     p = db.scalar(
         select(RyunovaProductMaster)
         .options(selectinload(RyunovaProductMaster.images))
@@ -452,14 +450,13 @@ async def import_product_image_from_url(
             detail=f"Could not download URL: {e!s}",
         ) from e
 
-    settings = get_settings()
-    upload_root = Path(settings.upload_dir)
     safe_name = build_stored_filename(p.title, content_type)
-    s3_key = f"products/{product_id}/{uuid.uuid4().hex}_{safe_name}"
-    dest_dir = upload_root / Path(s3_key).parent
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_path = upload_root / s3_key
-    dest_path.write_bytes(image_bytes)
+    s3_key = f"orgs/{p.organisation_id}/products/{product_id}/{uuid.uuid4().hex}_{safe_name}"
+    try:
+        write_media_bytes(s3_key, image_bytes, content_type)
+    except Exception:
+        delete_media_key(s3_key)
+        raise
     size = len(image_bytes)
 
     want_cover = body.is_cover

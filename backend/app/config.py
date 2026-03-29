@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     # Production bucket arn:aws:s3:::ryunova-channels-organisations-media — used when wiring boto3 uploads
     aws_s3_media_bucket: str = Field(default="", alias="AWS_S3_MEDIA_BUCKET")
     aws_s3_region: str = Field(default="", alias="AWS_S3_REGION")
+    # When true, keys under orgs/ and users/ are stored in S3; set MEDIA_PUBLIC_BASE_URL to the bucket URL
+    use_s3_media: bool = Field(default=False, alias="USE_S3_MEDIA")
 
     # Optional SMTP for sign-in codes (same env names as Django web app; leave blank to log only)
     email_host: str = Field(default="", alias="EMAIL_HOST")

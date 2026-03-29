@@ -8,9 +8,9 @@ Public URLs in API JSON use API_PUBLIC_URL / RYUNOVA_API_PUBLIC (typically https
 
 Optional PROD_API_PUBLIC_HOST: if unset, defaults to api.<PROD_SITE_DOMAIN> for public API URLs.
 
-S3 bucket/region vars are reserved for future boto3 uploads. MEDIA_PUBLIC_BASE_URL: only set PROD_MEDIA_PUBLIC_BASE_URL
-when media is actually on S3/CloudFront. If unset, generated .env leaves it empty so public_media_url() uses
-API_PUBLIC_URL + /api/v1/media (files served from the API container disk — see docker-compose volume).
+S3: set USE_S3_MEDIA_VAL=true and attach an IAM role with s3:PutObject/DeleteObject/GetObject on the bucket.
+When USE_S3_MEDIA is true, MEDIA_PUBLIC_BASE_URL defaults to the bucket virtual-host URL unless PROD_MEDIA_PUBLIC_BASE_URL
+is set (e.g. CloudFront). When false, MEDIA_PUBLIC_BASE_URL is empty and new orgs/ + users/ keys are stored on API disk.
 
 SMTP: defaults to smtp.hostinger.com:587 + TLS. Set EMAIL_HOST_VAL / EMAIL_PORT_VAL / EMAIL_USE_TLS_VAL from
 GitHub Actions env (see deploy-prod.yml). FastAPI and Django both read EMAIL_* from the same .env.
@@ -51,11 +51,13 @@ def main() -> None:
 
     s3_bucket = (os.environ.get("AWS_S3_MEDIA_BUCKET_VAL") or "").strip() or DEFAULT_S3_MEDIA_BUCKET
     aws_region = (os.environ.get("AWS_S3_REGION_VAL") or "").strip() or DEFAULT_AWS_REGION
+    use_s3_media = (os.environ.get("USE_S3_MEDIA_VAL") or "").strip().lower() in ("1", "true", "yes")
     media_public_override = (os.environ.get("MEDIA_PUBLIC_BASE_URL_VAL") or "").strip()
     if media_public_override:
         media_public_base = media_public_override.rstrip("/")
+    elif use_s3_media:
+        media_public_base = f"https://{s3_bucket}.s3.{aws_region}.amazonaws.com"
     else:
-        # Avatars/products are stored on API disk, not S3, until uploads are wired — do not point browsers at S3.
         media_public_base = ""
 
     host_only = site_domain.split(":")[0]
@@ -103,6 +105,7 @@ def main() -> None:
         f'EMAIL_HOST_USER_NAME="{esc(from_name)}"',
         f'AWS_S3_MEDIA_BUCKET="{esc(s3_bucket)}"',
         f'AWS_S3_REGION="{esc(aws_region)}"',
+        f'USE_S3_MEDIA="{"true" if use_s3_media else "false"}"',
         f'MEDIA_PUBLIC_BASE_URL="{esc(media_public_base)}"',
     ]
     print("\n".join(lines))

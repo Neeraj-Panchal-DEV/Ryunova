@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import re
 import uuid
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.media_storage import write_bytes as write_media_bytes
 from app.database import get_db
 from app.dependencies import CurrentUser
 from app.media_urls import public_media_url
@@ -111,33 +110,33 @@ async def create_organisation(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail="Logo must be JPEG, PNG, GIF, or WebP.",
             )
-        settings = get_settings()
-        upload_root = Path(settings.upload_dir)
         ext = _logo_extension(content_type)
-        s3_key = f"org-logos/{org.id}/{uuid.uuid4().hex}_logo{ext}"
-        dest_path = upload_root / s3_key
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        s3_key = f"orgs/{org.id}/branding/{uuid.uuid4().hex}_logo{ext}"
+        chunks: list[bytes] = []
         size = 0
         try:
-            with dest_path.open("wb") as out:
-                while True:
-                    chunk = await logo.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    size += len(chunk)
-                    if size > _MAX_LOGO_BYTES:
-                        db.rollback()
-                        dest_path.unlink(missing_ok=True)
-                        raise HTTPException(
-                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                            detail=f"Logo too large (max {_MAX_LOGO_BYTES // (1024 * 1024)} MB).",
-                        )
-                    out.write(chunk)
+            while True:
+                chunk = await logo.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > _MAX_LOGO_BYTES:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Logo too large (max {_MAX_LOGO_BYTES // (1024 * 1024)} MB).",
+                    )
+                chunks.append(chunk)
         except HTTPException:
             raise
         except Exception:
             db.rollback()
-            dest_path.unlink(missing_ok=True)
+            raise
+        data = b"".join(chunks)
+        try:
+            write_media_bytes(s3_key, data, content_type)
+        except Exception:
+            db.rollback()
             raise
         org.logo_s3_key = s3_key
 

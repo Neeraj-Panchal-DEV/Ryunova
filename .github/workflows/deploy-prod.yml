@@ -18,6 +18,7 @@
 #   AWS_REGION or PROD_AWS_REGION — S3 URL region (default ap-southeast-2)
 #   PROD_MEDIA_PUBLIC_BASE_URL — override S3 virtual-host URL (e.g. CloudFront)
 #   PROD_DB_HOST, PROD_DB_PORT, PROD_POSTGRES_DB_NAME, PROD_EMAIL_* (or EMAIL_* fallbacks — same values as FinText), ECR + AWS keys (see docs/DEPLOYMENT_EC2_ALB.md).
+#   Optional PROD_USE_S3_MEDIA=true — store orgs/ + users/ media in S3 (IAM role on EC2 required).
 # ECR: one repository (default prod/ryunova-channels); images are tagged api-<sha> and web-<sha>. Optional PROD_ECR_REPOSITORY overrides the repo name.
 # DB: deploy runs scripts/run_ryunova_migrations.sh on EC2 — creates DB if allowed, ensures app role, applies db/migrations/order.txt (see db/README.md).
 #
@@ -198,6 +199,7 @@ jobs:
           AWS_S3_MEDIA_BUCKET_VAL: ${{ secrets.PROD_AWS_S3_MEDIA_BUCKET }}
           AWS_S3_REGION_VAL: ${{ secrets.AWS_REGION || secrets.PROD_AWS_REGION || 'ap-southeast-2' }}
           MEDIA_PUBLIC_BASE_URL_VAL: ${{ secrets.PROD_MEDIA_PUBLIC_BASE_URL }}
+          USE_S3_MEDIA_VAL: ${{ secrets.PROD_USE_S3_MEDIA || 'false' }}
         run: |
           python3 scripts/deploy_generate_ec2_env.py > /tmp/ryunova.env
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no /tmp/ryunova.env \
