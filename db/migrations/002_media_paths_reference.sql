@@ -1,0 +1,23 @@
+-- Reference only — NOT listed in order.txt.
+-- Do not run this SQL without moving files on disk (or S3 objects) to match.
+-- The supported path is: backend/scripts/migrate_media_paths.py (see db/README.md).
+--
+-- Example transforms (PostgreSQL, schema ryunova):
+--
+-- Product images:
+--   UPDATE ryunova.ryunova_product_image pi
+--   SET s3_key = 'orgs/' || pm.organisation_id::text || '/' || pi.s3_key
+--   FROM ryunova.ryunova_product_master pm
+--   WHERE pi.product_id = pm.id
+--     AND pi.s3_key LIKE 'products/%'
+--     AND pi.s3_key NOT LIKE 'orgs/%';
+--
+-- Organisation logos (filename = segment after org-logos/<uuid>/):
+--   UPDATE ryunova.ryunova_organisations o
+--   SET logo_s3_key = 'orgs/' || o.id::text || '/branding/' || regexp_replace(o.logo_s3_key, '^org-logos/[0-9a-f-]{36}/', '')
+--   WHERE o.logo_s3_key LIKE 'org-logos/%'
+--     AND o.logo_s3_key NOT LIKE 'orgs/%';
+--
+-- Avatars (require per-user org resolution — use the Python script).
+
+SELECT 1;

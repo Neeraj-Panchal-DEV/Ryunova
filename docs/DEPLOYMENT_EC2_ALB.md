@@ -122,7 +122,7 @@ The seeded **default organisation** (`slug` **`default`**, id **`00000000-0000-4
 
 **S3 (`USE_S3_MEDIA=true`):** Set GitHub secret **`PROD_USE_S3_MEDIA`** to **`true`**. Deploy sets **`USE_S3_MEDIA=true`**, **`MEDIA_PUBLIC_BASE_URL`** to the bucket virtual-host URL (unless **`PROD_MEDIA_PUBLIC_BASE_URL`** overrides). IAM + bucket **`GetObject`** as before.
 
-**Legacy DB keys** (`products/...`, top-level `users/...`, `org-logos/...`) still resolve via **`/api/v1/media/...`** until re-uploaded.
+**Legacy DB keys** (`products/...`, top-level `users/...`, `org-logos/...`) still resolve via **`/api/v1/media/...`** until re-uploaded or migrated once with **`backend/scripts/migrate_media_paths.py`** (see **`db/README.md`** — not part of automated **`order.txt`** migrations).
 
 **ALB:** For disk mode, **`api.*` → 8010** (§2). For S3 mode, **`orgs/`** URLs use **`MEDIA_PUBLIC_BASE_URL`**.
 

@@ -34,6 +34,30 @@ FinText continues to use schema **`fintext`** in the same **`latrobe_apps_db`** 
 
 ---
 
+### Media path migration (one-time)
+
+If you deployed **before** the **`orgs/<organisation_id>/...`** layout, existing rows may still use legacy keys (`products/...`, `org-logos/...`, `avatars/...`, or `users/.../avatars/...`) and files on disk under the old paths.
+
+**Do not** add a blind SQL migration to **`order.txt`** that only updates keys — the browser would 404 until files exist at the new paths.
+
+**Procedure:**
+
+1. Deploy the application version that reads/writes the new paths.
+2. On the **EC2 host** (or anywhere with **`DATABASE_URL`** and the **`uploads`** volume mounted like production), run from **`backend/`**:
+
+   ```bash
+   docker exec ryunova_api python scripts/migrate_media_paths.py --dry-run
+   docker exec ryunova_api python scripts/migrate_media_paths.py
+   ```
+
+   This moves files under **`/app/uploads`** and updates **`ryunova_product_image.s3_key`**, **`ryunova_organisations.logo_s3_key`**, **`ryunova_users.avatar_s3_key`**.
+
+3. If **`USE_S3_MEDIA=true`**, copy objects in S3 to the new keys first, then run **`python scripts/migrate_media_paths.py --db-only`** so only the database is updated.
+
+Reference SQL (products/logos only) for manual use: **`db/migrations/002_media_paths_reference.sql`** (commented; not applied by deploy).
+
+---
+
 ## Local database reset (after consolidating patches)
 
 If you previously applied old **`patch_*.sql`** files to a dev DB, either **drop and recreate** the database and run **`mvp1_schema.sql`** once, or diff your DB against this repo and write your own `ALTER` scripts.
