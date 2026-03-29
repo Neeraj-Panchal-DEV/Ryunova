@@ -28,11 +28,16 @@ Single source of truth for **deploying RyuNova to AWS**: EC2, Application Load B
 1. **Browser UI (Django):** Listener rule for your **site hostname** (e.g. `ryunova.example.com`) → target group → EC2 instance port **8011**.  
    - FastAPI has **no route for `GET /`**; if the UI hostname points at **8010**, browsers see JSON `{"detail":"Not Found"}`. **8011** serves `/` and `/accounts/login/`.
 
-2. **Public API (optional):** Separate hostname (e.g. `api.example.com`) → target group → port **8010**, or path rules if you prefer one host.
+2. **Public API + media (required for images):** The browser loads avatars and product photos from **`https://api.<your-domain>/api/v1/media/...`** (see **`API_PUBLIC_URL`** / **`RYUNOVA_API_PUBLIC`** in `.env`). You **must** route the **API hostname** to port **8010** (FastAPI), not **8011** (Django).  
+   - **Route 53:** Create **`A`/`AAAA` alias** (or `CNAME`) for **`api.<site>`** → same ALB as the app host.  
+   - **ALB listener rule:** **Host header** `api.<your-site-domain>` → target group → EC2 → port **8010**.  
+   If **`api.*` traffic hits 8011** (Django), `/api/v1/media/...` is not served by Django and **images break** (404 or wrong app).
 
 3. **Security groups:** ALB → EC2 allow **8010** and **8011** from the ALB security group as needed. **PostgreSQL** is not exposed to the internet. Containers reach Postgres via **`host.docker.internal:5432`** (see generated `.env`).
 
 4. **Health checks:** API target group: `GET /health` on **8010** (`{"status":"ok"}`). The GitHub workflow checks **`http://127.0.0.1:8010/health` over SSH** (not from the runner) so security groups do not need to open 8010 to GitHub.
+
+5. **Quick check from your laptop:** After DNS propagates, open **`https://api.<your-domain>/health`** — expect **`{"status":"ok"}`**. Then **`https://api.<your-domain>/api/v1/media/`** may 404 (no index), but a **real avatar path** from the DB should return **200** with image bytes if routing and files are correct.
 
 ---
 
@@ -101,6 +106,8 @@ Image tags: **`api-<git-sha>`** and **`web-<git-sha>`** in the same repository.
 
 **Current behavior:** FastAPI stores files under **`/app/uploads`** (bind-mounted on EC2 as **`data/uploads`**). Public URLs in JSON are **`https://<api-host>/api/v1/media/<key>`** — set **`MEDIA_PUBLIC_BASE_URL` empty** (deploy default) so **`backend/app/media_urls.py`** does not point the browser at S3. If **`MEDIA_PUBLIC_BASE_URL`** is set to a bucket or CloudFront URL, objects must **exist** there; the app does not upload avatars to S3 yet.
 
+**ALB:** The **`<api-host>`** in those URLs must resolve and reach **port 8010** (see §2). **Do not** send `api.*` to **8011**.
+
 **Future S3:** Bucket name **`ryunova-channels-organisations-media`** (override **`PROD_AWS_S3_MEDIA_BUCKET`**). Set **`PROD_MEDIA_PUBLIC_BASE_URL`** only after boto3 uploads and bucket policy/public access are aligned. EC2 IAM needs S3 permissions when implemented.
 
 ---
@@ -135,6 +142,7 @@ Verify web → API inside Compose: **`docker exec ryunova_web python -c "import 
 | Symptom | What to check |
 |---------|----------------|
 | **502** from ALB | Target group ports **8010/8011**, security groups, **`docker compose ps`**, container logs |
+| **Broken images** (profile, product thumbnails) | **`api.<domain>`** DNS → ALB; **listener rule** `Host: api.<domain>` → target **8010** (not 8011). On EC2: **`curl -sI http://127.0.0.1:8010/health`**. In browser: **Network** tab on image URL — expect **200** from **`/api/v1/media/...`**. |
 | **JSON `Not Found` on `/`** | Traffic hitting **8010** (API) instead of **8011** (Django) |
 | **`DisallowedHost`** | Wrong app (e.g. FinText) or **`ALLOWED_HOSTS`** / **`PROD_SITE_DOMAIN`** |
 | **500 on `/accounts/login/`** | **`docker exec ryunova_web python manage.py migrate --noinput`**; **`docker logs ryunova_web`** |

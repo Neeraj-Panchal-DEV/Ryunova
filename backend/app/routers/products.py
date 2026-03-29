@@ -27,6 +27,7 @@ from app.schemas.product import (
     ProductUpdate,
 )
 from app.taxonomy_display import product_audit_labels
+from app.media_urls import public_media_url
 from app.utils.image_url_import import build_stored_filename, download_image_bytes
 
 ALLOWED_PRODUCT_PAGE_SIZES = frozenset({10, 20, 50, 100})
@@ -53,10 +54,8 @@ LOCAL_BUCKET = "local"
 
 
 def _media_url(s3_key: str) -> str:
-    s = get_settings()
-    base = str(s.api_public_url).rstrip("/")
-    prefix = s.media_url_prefix.rstrip("/")
-    return f"{base}{prefix}/{s3_key}"
+    """Same rules as avatars (S3 base vs API public URL)."""
+    return public_media_url(s3_key) or ""
 
 
 def _normalize_content_type(raw: str | None) -> str:
