@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.media_storage import write_bytes as write_media_bytes
+from app.media_storage import ensure_org_media_folders, write_bytes as write_media_bytes
 from app.database import get_db
 from app.dependencies import CurrentUser
 from app.media_urls import public_media_url
@@ -142,4 +142,5 @@ async def create_organisation(
 
     db.commit()
     db.refresh(org)
+    ensure_org_media_folders(org.id)
     return _organisation_brief(org)

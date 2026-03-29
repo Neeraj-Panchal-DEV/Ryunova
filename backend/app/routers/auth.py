@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -15,8 +15,10 @@ from app.config import get_settings
 from app.database import get_db
 from app.mail_outbound import send_email_change_verification_email, send_login_code_email
 from app.profile_patch import merge_social_handles
+from app.constants import DEFAULT_ORGANISATION_ID
 from app.media_storage import delete_key as delete_media_key, write_bytes as write_media_bytes
 from app.media_urls import public_media_url
+from app.org_access import user_has_org_membership
 from app.dependencies import CurrentUser
 from app.models.login_code import RyunovaLoginCode
 from app.models.organisation import RyunovaEmailVerificationToken, RyunovaOrganisation, RyunovaUserOrganisation
@@ -119,6 +121,35 @@ def _user_to_read(user: RyunovaUser) -> UserRead:
 
 def _delete_avatar_file(key: str | None) -> None:
     delete_media_key(key)
+
+
+def _resolve_avatar_organisation_id(
+    db: Session,
+    user: RyunovaUser,
+    x_organisation_id: str | None,
+) -> uuid.UUID:
+    """Prefer X-Organisation-Id when valid; else first membership (by org name); else default org."""
+    raw = (x_organisation_id or "").strip()
+    if raw:
+        try:
+            oid = uuid.UUID(raw)
+        except ValueError:
+            oid = None
+        else:
+            org = db.get(RyunovaOrganisation, oid)
+            if org:
+                if user.is_platform_user or user_has_org_membership(db, user, oid):
+                    return oid
+    first = db.scalar(
+        select(RyunovaOrganisation.id)
+        .join(RyunovaUserOrganisation, RyunovaUserOrganisation.organisation_id == RyunovaOrganisation.id)
+        .where(RyunovaUserOrganisation.user_id == user.id)
+        .order_by(RyunovaOrganisation.name)
+        .limit(1)
+    )
+    if first:
+        return first
+    return DEFAULT_ORGANISATION_ID
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -330,6 +361,7 @@ async def upload_avatar(
     db: Annotated[Session, Depends(get_db)],
     user: CurrentUser,
     file: UploadFile = File(...),
+    x_organisation_id: Annotated[str | None, Header(alias="X-Organisation-Id")] = None,
 ) -> UserRead:
     content_type = _normalize_content_type(file.content_type)
     if content_type == "image/jpg":
@@ -340,7 +372,8 @@ async def upload_avatar(
             detail="Unsupported file type. Use JPEG, PNG, GIF, or WebP.",
         )
     ext = _avatar_extension(content_type)
-    s3_key = f"users/{user.id}/avatars/{uuid.uuid4().hex}_avatar{ext}"
+    org_id = _resolve_avatar_organisation_id(db, user, x_organisation_id)
+    s3_key = f"orgs/{org_id}/users/{user.id}/avatars/{uuid.uuid4().hex}_avatar{ext}"
     chunks: list[bytes] = []
     size = 0
     try:

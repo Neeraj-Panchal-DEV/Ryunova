@@ -11,7 +11,7 @@ def public_media_url(s3_key: str | None) -> str | None:
         return None
     s = get_settings()
     override = (s.media_public_base_url or "").strip()
-    # orgs/ + users/ keys with USE_S3_MEDIA use the public bucket/CloudFront base; legacy paths stay on the API.
+    # orgs/... keys with USE_S3_MEDIA use the public bucket/CloudFront base; legacy paths stay on the API.
     if override and s.use_s3_media and key_uses_object_storage(s3_key):
         return f"{override.rstrip('/')}/{s3_key}"
     base = str(s.api_public_url).rstrip("/")

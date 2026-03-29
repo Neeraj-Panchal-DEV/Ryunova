@@ -14,6 +14,8 @@ Use **one mental model**, **two files**:
 
 **Recommendation:** Keep a **single reference** (this doc + `.env.example` files). For production, copy the **same** email and site URL values into **both** `backend/.env` and `web/.env` so invitations (Django) and OTP mail (API) behave the same.
 
+**Uploads:** With **`USE_S3_MEDIA=false`** (default), the API stores files on disk under **`uploads/orgs/<organisation_id>/`** (products, branding, per-user avatars). The seeded default organisation id is in **`backend/app/constants.py`**. Enabling **`USE_S3_MEDIA`** moves **`orgs/...`** keys to S3 — see **`docs/DEPLOYMENT_EC2_ALB.md`** §8.
+
 ### Cloudflare Turnstile (optional, `web/.env` only)
 
 When **both** `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, Django shows the Cloudflare widget on password login and email-code login and verifies tokens with Cloudflare before calling the API. If either variable is **missing or empty**, the app keeps the **built-in “Are you human?”** multiple-choice flow (no Turnstile script loaded).

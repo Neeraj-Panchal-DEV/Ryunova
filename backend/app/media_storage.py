@@ -1,8 +1,9 @@
-"""Persist uploaded media to local disk or S3 (see USE_S3_MEDIA + key prefixes orgs/ and users/)."""
+"""Persist uploaded media to local disk or S3 (see USE_S3_MEDIA + key prefix orgs/)."""
 
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -12,10 +13,15 @@ logger = logging.getLogger(__name__)
 
 _s3_client: Any = None
 
+# Layout under upload_dir (and S3) — all tenant data lives under orgs/<organisation_id>/:
+#   products/<product_id>/...
+#   branding/...
+#   users/<user_id>/avatars/...
+
 
 def key_uses_object_storage(key: str) -> bool:
-    """Keys under orgs/ or users/ can be stored in S3 when USE_S3_MEDIA is true."""
-    return bool(key) and (key.startswith("orgs/") or key.startswith("users/"))
+    """Only keys under orgs/ are stored in S3 when USE_S3_MEDIA is true."""
+    return bool(key) and key.startswith("orgs/")
 
 
 def _client():
@@ -47,6 +53,18 @@ def write_bytes(key: str, data: bytes, content_type: str) -> None:
     dest = root / key
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)
+
+
+def ensure_org_media_folders(organisation_id: uuid.UUID) -> None:
+    """Create empty directory layout for one organisation on local disk (no-op when USE_S3_MEDIA)."""
+    s = get_settings()
+    if s.use_s3_media:
+        return
+    root = Path(s.upload_dir)
+    oid = str(organisation_id)
+    base = root / "orgs" / oid
+    for sub in ("products", "branding", "users"):
+        (base / sub).mkdir(parents=True, exist_ok=True)
 
 
 def delete_key(key: str | None) -> None:

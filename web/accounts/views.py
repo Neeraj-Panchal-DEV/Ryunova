@@ -914,7 +914,12 @@ def profile_view(request):
             try:
                 data = f.read()
                 ct = f.content_type or "application/octet-stream"
-                api_post_multipart("/auth/me/avatar", token, {"file": (f.name, data, ct)})
+                api_post_multipart(
+                    "/auth/me/avatar",
+                    token,
+                    {"file": (f.name, data, ct)},
+                    organisation_id=(request.session.get("organisation_id") or None),
+                )
             except ApiError as e:
                 messages.error(request, _err_msg(e))
                 try:

@@ -105,21 +105,26 @@ Image tags: **`api-<git-sha>`** and **`web-<git-sha>`** in the same repository.
 
 ## 8. Media (disk vs S3)
 
-**Object keys (always):**
+**Until you enable S3 (`USE_S3_MEDIA=false`, the default), everything stays on the filesystem** under **`/app/uploads`** (host: **`data/uploads`**). **`PROD_USE_S3_MEDIA`** / **`USE_S3_MEDIA`** does not need to be set.
 
-| Prefix | Content |
-|--------|---------|
-| **`orgs/<organisation_id>/products/<product_id>/...`** | Product images / video |
-| **`orgs/<organisation_id>/branding/...`** | Organisation logo |
-| **`users/<user_id>/avatars/...`** | Profile photo |
+**Folder layout (one tree per organisation):** all tenant files use prefix **`orgs/<organisation_id>/`**:
 
-**Default (`USE_S3_MEDIA=false`):** Files live under **`/app/uploads/<key>`** on the API container (host: **`data/uploads`**). Public URLs are **`https://<api-host>/api/v1/media/<key>`**. **`MEDIA_PUBLIC_BASE_URL`** is empty in generated `.env`.
+```
+orgs/<organisation_id>/
+  products/<product_id>/     # product images / video
+  branding/                  # organisation logo
+  users/<user_id>/avatars/   # profile photos (scoped to that org’s folder)
+```
 
-**S3 (`USE_S3_MEDIA=true`):** Set GitHub secret **`PROD_USE_S3_MEDIA`** to **`true`**. Deploy sets **`USE_S3_MEDIA=true`**, **`MEDIA_PUBLIC_BASE_URL`** to the bucket virtual-host URL (unless **`PROD_MEDIA_PUBLIC_BASE_URL`** overrides, e.g. CloudFront). Attach an **IAM instance profile** to the EC2 instance with **`s3:PutObject`**, **`s3:DeleteObject`**, **`s3:GetObject`** on **`arn:aws:s3:::<bucket>/*`**. Bucket policy: allow **`s3:GetObject`** for public reads on that prefix (or serve via CloudFront) so `<img src>` works.
+The seeded **default organisation** (`slug` **`default`**, id **`00000000-0000-4000-8000-000000000001`**) uses the same layout under **`orgs/00000000-0000-4000-8000-000000000001/`**. On **API startup** and when **creating an organisation**, empty **`products`**, **`branding`**, and **`users`** directories are created on disk (skipped when **`USE_S3_MEDIA=true`** because S3 has no empty “folders”).
 
-**Legacy rows** in the DB may still use old keys (`products/...`, `avatars/...`, `org-logos/...`) on disk — those URLs keep using **`/api/v1/media/...`** until re-uploaded.
+**Avatar storage:** the browser sends **`X-Organisation-Id`** (Django passes the session workspace org). The API stores the file under that org’s tree; if missing or invalid, it uses the user’s first membership (by org name), then the **default organisation** id above.
 
-**ALB:** For disk mode, **`api.*` → 8010** (§2). For S3 mode, browsers load files from the bucket URL in **`MEDIA_PUBLIC_BASE_URL`** for **`orgs/`** and **`users/`** keys.
+**S3 (`USE_S3_MEDIA=true`):** Set GitHub secret **`PROD_USE_S3_MEDIA`** to **`true`**. Deploy sets **`USE_S3_MEDIA=true`**, **`MEDIA_PUBLIC_BASE_URL`** to the bucket virtual-host URL (unless **`PROD_MEDIA_PUBLIC_BASE_URL`** overrides). IAM + bucket **`GetObject`** as before.
+
+**Legacy DB keys** (`products/...`, top-level `users/...`, `org-logos/...`) still resolve via **`/api/v1/media/...`** until re-uploaded.
+
+**ALB:** For disk mode, **`api.*` → 8010** (§2). For S3 mode, **`orgs/`** URLs use **`MEDIA_PUBLIC_BASE_URL`**.
 
 ---
 
