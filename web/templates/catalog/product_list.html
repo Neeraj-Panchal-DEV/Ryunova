@@ -72,6 +72,7 @@
 {% endif %}
 
 <div class="table-wrap table-wrap--product-compact">
+  <div class="table-scroll-x">
   <table class="table table--product-list-compact" aria-label="Products">
     <thead>
       <tr>
@@ -169,6 +170,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 
 {% if pagination.total > 0 %}
@@ -249,6 +251,45 @@
     }
   });
   sync();
+})();
+
+(function () {
+  function positionRowMenu(details) {
+    var panel = details.querySelector(".row-menu__panel");
+    var trigger = details.querySelector(".row-menu__trigger");
+    if (!panel || !trigger) return;
+    if (!details.open) {
+      panel.style.cssText = "";
+      return;
+    }
+    var tr = trigger.getBoundingClientRect();
+    panel.style.position = "fixed";
+    panel.style.zIndex = "10050";
+    panel.style.left = "auto";
+    panel.style.right = Math.max(8, window.innerWidth - tr.right) + "px";
+    panel.style.top = tr.bottom + 4 + "px";
+    panel.style.minWidth = "9rem";
+  }
+
+  var menus = document.querySelectorAll(".table--product-list-compact .row-menu");
+  if (!menus.length) return;
+
+  menus.forEach(function (details) {
+    details.addEventListener("toggle", function () {
+      if (details.open) {
+        menus.forEach(function (other) {
+          if (other !== details && other.open) other.open = false;
+        });
+      }
+      positionRowMenu(details);
+    });
+  });
+
+  function reflowOpenMenus() {
+    document.querySelectorAll(".table--product-list-compact .row-menu[open]").forEach(positionRowMenu);
+  }
+  window.addEventListener("resize", reflowOpenMenus);
+  window.addEventListener("scroll", reflowOpenMenus, true);
 })();
 </script>
 {% endif %}

@@ -1488,8 +1488,16 @@ body.profile-crop-modal--open {
   background: #eeeeee;
 }
 
+/* Outer: min height so short lists don’t collapse; inner: horizontal scroll only (row menus use fixed pos when open). */
 .table-wrap--product-compact {
+  overflow: visible;
+  /* Floor ~5 data rows + header; grows modestly with viewport (short lists don’t collapse the block) */
+  min-height: clamp(22rem, 48vh, 70vh);
+}
+.table-wrap--product-compact .table-scroll-x {
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 .table--product-list-compact {
   font-size: 0.8125rem;
@@ -1671,6 +1679,10 @@ body.profile-crop-modal--open {
 }
 
 .col-actions { width: 40px; text-align: center; vertical-align: middle; }
+.table--product-list-compact .row-menu[open] {
+  z-index: 10040;
+  isolation: isolate;
+}
 .row-menu {
   position: relative;
   display: inline-block;
@@ -1714,6 +1726,10 @@ body.profile-crop-modal--open {
   background: #fff;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 20;
+}
+/* Inline fallback when JS off; open menus use fixed + z-index via script to escape overflow clipping */
+.table--product-list-compact .row-menu[open] > .row-menu__panel {
+  z-index: 10050;
 }
 .row-menu__item {
   display: block;
