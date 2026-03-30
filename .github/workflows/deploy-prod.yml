@@ -54,8 +54,6 @@ jobs:
       EC2_HOST: ${{ secrets.PROD_EC2_HOST || secrets.EC2_HOST_PROD }}
       EC2_USER: ${{ secrets.PROD_EC2_USER }}
       DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || 'prod' }}
-      # Do not put secret-derived booleans in env — breaks workflow_dispatch YAML parse. Use step `if:` with secrets below.
-      DEPLOY_NOTIFY_WEBHOOK_URL: ${{ secrets.DEPLOY_NOTIFY_WEBHOOK_URL }}
 
     steps:
       - name: Checkout code
@@ -108,7 +106,7 @@ jobs:
           DJANGO_SECRET_KEY=ci-check-not-for-prod DEBUG=true python web/manage.py check
 
       - name: Configure AWS (ECR push)
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        if: steps.flags.outputs.ecr_push == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -116,11 +114,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
 
       - name: Log in to Amazon ECR
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        if: steps.flags.outputs.ecr_push == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push Docker images to ECR
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        if: steps.flags.outputs.ecr_push == 'true'
         env:
           REGISTRY: ${{ secrets.ECR_REGISTRY }}
           TAG: ${{ github.sha }}
@@ -287,9 +285,9 @@ jobs:
           fi
 
       - name: Optional webhook (Slack / etc.)
-        if: success() && env.DEPLOY_NOTIFY_WEBHOOK_URL != ''
+        if: success() && steps.flags.outputs.notify == 'true'
         env:
-          WEBHOOK: ${{ env.DEPLOY_NOTIFY_WEBHOOK_URL }}
+          WEBHOOK: ${{ secrets.DEPLOY_NOTIFY_WEBHOOK_URL }}
         run: |
           MSG="✅ RyuNova deploy OK: ${{ env.DEPLOY_BRANCH }} @ ${{ github.sha }} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -sfS -X POST "$WEBHOOK" -H 'Content-Type: application/json' \
