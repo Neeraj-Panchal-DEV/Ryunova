@@ -22,10 +22,33 @@
       <nav class="nav" aria-label="Main">
         {% if not request.resolver_match or request.resolver_match.url_name != "home" %}
         <a href="{% if request.session.access_token %}{% url 'dashboard' %}{% else %}{% url 'home' %}{% endif %}">Home</a>
-        <a href="{% url 'product_list' %}">Products</a>
-        <a href="{% url 'category_list' %}">Categories</a>
-        <a href="{% url 'brand_list' %}">Brands</a>
-        <a href="{% url 'marketplace_list' %}">Marketplaces</a>
+        <div class="nav-dropdown" data-main-nav-dropdown>
+          <button type="button" class="nav-dropdown__trigger" id="nav-products-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="nav-products-panel">
+            Products<span class="nav-dropdown__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="nav-dropdown__panel" id="nav-products-panel" role="menu" aria-labelledby="nav-products-trigger" hidden>
+            <a href="{% url 'product_list' %}" class="nav-dropdown__item" role="menuitem">All products</a>
+            <a href="{% url 'category_list' %}" class="nav-dropdown__item" role="menuitem">Categories</a>
+            <a href="{% url 'brand_list' %}" class="nav-dropdown__item" role="menuitem">Brands</a>
+            <div class="nav-dropdown__sep" aria-hidden="true"></div>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">Sales</button>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">Inventory</button>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">Service</button>
+          </div>
+        </div>
+        <div class="nav-dropdown nav-dropdown--align-right" data-main-nav-dropdown>
+          <button type="button" class="nav-dropdown__trigger" id="nav-marketplaces-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="nav-marketplaces-panel">
+            Marketplaces<span class="nav-dropdown__chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="nav-dropdown__panel" id="nav-marketplaces-panel" role="menu" aria-labelledby="nav-marketplaces-trigger" hidden>
+            <a href="{% url 'marketplace_list' %}" class="nav-dropdown__item" role="menuitem">All marketplaces</a>
+            <div class="nav-dropdown__sep" aria-hidden="true"></div>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">Social Media</button>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">Campaigns</button>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">SEO</button>
+            <button type="button" class="nav-dropdown__item nav-dropdown__item--stub" role="menuitem" data-snackbar-trigger data-snackbar-message="Future releases">AIO</button>
+          </div>
+        </div>
         {% endif %}
         {% if nav_user %}
         <div class="user-nav" data-user-nav>
@@ -106,6 +129,7 @@
   {% endif %}
   <div id="snackbar" class="snackbar" role="status" aria-live="polite" aria-hidden="true" hidden></div>
   <script src="{% static 'flash-messages.js' %}"></script>
+  <script src="{% static 'main-nav.js' %}"></script>
   {% if nav_user %}<script src="{% static 'user-nav.js' %}"></script>{% endif %}
   {% block extra_js %}{% endblock %}
 </body>

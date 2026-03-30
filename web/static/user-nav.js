@@ -11,7 +11,18 @@
     });
   }
 
+  function closeMainNavDropdowns() {
+    document.querySelectorAll("[data-main-nav-dropdown]").forEach(function (wrap) {
+      var panel = wrap.querySelector(".nav-dropdown__panel");
+      var trig = wrap.querySelector(".nav-dropdown__trigger");
+      if (panel) panel.hidden = true;
+      if (trig) trig.setAttribute("aria-expanded", "false");
+      wrap.classList.remove("nav-dropdown--open");
+    });
+  }
+
   function closeAll() {
+    closeMainNavDropdowns();
     closeSubmenus();
     document.querySelectorAll("[data-user-nav]").forEach(function (root) {
       var menu = root.querySelector("[data-user-nav-menu]");
