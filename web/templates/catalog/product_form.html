@@ -34,7 +34,7 @@
         </label>
         <label class="field field--full">
           <span class="field__label">Description</span>
-          <p class="field__hint" id="product-description-hint">Rich text is saved as <strong>HTML</strong> (e.g. for Shopify <code>body_html</code>, eBay description HTML, and other channels).</p>
+          <p class="field__hint" id="product-description-hint">Rich text is saved as <strong>HTML</strong> (e.g. for Shopify <code>body_html</code>, eBay description HTML, and other marketplaces).</p>
           <textarea
             id="product_description_html"
             name="description"
@@ -47,7 +47,7 @@
     {% if product and product.images %}
     <aside class="product-form-top__aside" aria-labelledby="product-current-media-title">
       <h2 class="section-title" id="product-current-media-title">Current media</h2>
-      <p class="field__hint">The <strong>cover</strong> is shown first everywhere (channels + list). Pick one radio per product.</p>
+      <p class="field__hint">The <strong>cover</strong> is shown first everywhere (marketplaces + list). Pick one radio per product.</p>
       <ul class="product-media-existing">
         {% for img in product.images %}
         <li class="product-media-existing__item">
@@ -156,9 +156,50 @@
         Active (shown in product lists when “Show disabled” is off)
       </label>
     </label>
+    <div class="field field--full surface surface--marketplace">
+      <h2 class="section-title">Marketplace listing</h2>
+      <p class="field__hint">Inventory <strong>status</strong> (above) is separate from <strong>listing readiness</strong>. Choose <em>Ready to post</em> when the listing is complete; only then can you enable each marketplace. Returning to <em>Draft</em> clears all marketplace flags.</p>
+      <label class="field">
+        <span class="field__label">Listing readiness</span>
+        <select name="listing_readiness" id="product-listing-readiness" class="input input--select">
+          <option value="draft" {% if not product or product.listing_readiness|default:'draft' == 'draft' %}selected{% endif %}>Draft</option>
+          <option value="ready_to_post" {% if product and product.listing_readiness == 'ready_to_post' %}selected{% endif %}>Ready to post</option>
+        </select>
+      </label>
+      <div class="table-wrap marketplace-matrix-wrap">
+        <table class="table table--compact" aria-label="Marketplaces">
+          <thead><tr><th>Marketplace</th><th>Enabled</th><th>Last refreshed</th><th>Refresh now</th></tr></thead>
+          <tbody>
+          {% if product and product.marketplace_listings %}
+            {% for cl in product.marketplace_listings %}
+            <tr>
+              <td><strong>{{ cl.name }}</strong> <span class="muted">({{ cl.code }})</span></td>
+              <td>
+                <input type="checkbox" name="marketplace_{{ cl.marketplace_id }}" value="on" {% if cl.enabled %}checked{% endif %} {% if not product.listing_readiness or product.listing_readiness != 'ready_to_post' %}disabled{% endif %}>
+              </td>
+              <td>{% if cl.last_refreshed_at %}{{ cl.last_refreshed_at|slice:":19" }}{% else %}—{% endif %}</td>
+              <td>
+                <input type="checkbox" name="marketplace_refresh_{{ cl.marketplace_id }}" value="on" {% if not product.listing_readiness or product.listing_readiness != 'ready_to_post' %}disabled{% endif %} aria-label="Mark refreshed for {{ cl.name }}">
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            {% for ch in all_marketplaces %}
+            <tr>
+              <td><strong>{{ ch.name }}</strong> <span class="muted">({{ ch.code }})</span></td>
+              <td colspan="3"><span class="field__hint" style="margin:0;">Save the product first, then set <strong>Ready to post</strong> to manage marketplace flags.</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No marketplaces configured. <a href="{% url 'marketplace_list' %}">Marketplace management</a>.</td></tr>
+            {% endfor %}
+          {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div class="field field--full product-media-field">
       <span class="field__label">Images &amp; videos</span>
-      <p class="field__hint">Add multiple files. Choose which one is the <strong>cover</strong> — it appears first for channels and in product listings. JPEG, PNG, GIF, WebP, MP4, WebM, QuickTime.</p>
+      <p class="field__hint">Add multiple files. Choose which one is the <strong>cover</strong> — it appears first for marketplaces and in product listings. JPEG, PNG, GIF, WebP, MP4, WebM, QuickTime.</p>
       {% if is_add_product and product %}<p class="field__hint">If save failed, choose your files again — browsers do not keep file inputs after a new page load.</p>{% endif %}
       <input type="hidden" name="cover_index" id="product-cover-index" value="{% if product %}{{ product.cover_index|default:'0' }}{% else %}0{% endif %}">
       <input
@@ -188,7 +229,7 @@
     <div class="field field--full product-sku-footer">
       <span class="field__label">SKU</span>
       {% if is_add_product and not product.id %}
-      <p class="field__hint">A unique <strong>10-letter</strong> code (A–Z) is assigned when you create this product. It stays fixed for the life of the product and is the stable identifier for channels such as Shopify and eBay.</p>
+      <p class="field__hint">A unique <strong>10-letter</strong> code (A–Z) is assigned when you create this product. It stays fixed for the life of the product and is the stable identifier for marketplaces such as Shopify and eBay.</p>
       <input type="text" class="input input--readonly" value="" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true" placeholder="Assigned when saved">
       {% else %}
       <input type="text" class="input input--readonly" value="{{ product.sku|default:'' }}" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true">

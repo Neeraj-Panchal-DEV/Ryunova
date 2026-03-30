@@ -13,6 +13,11 @@
     <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft only</option>
     <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived only</option>
   </select>
+  <select name="listing_readiness" class="input input--select input--filter-control input--filter-listing-readiness" aria-label="Listing readiness">
+    <option value="" {% if not listing_readiness_filter %}selected{% endif %}>Listing readiness</option>
+    <option value="draft" {% if listing_readiness_filter == 'draft' %}selected{% endif %}>Draft listing</option>
+    <option value="ready_to_post" {% if listing_readiness_filter == 'ready_to_post' %}selected{% endif %}>Ready to post</option>
+  </select>
   <label class="checkbox-label checkbox-label--filter">
     <input type="checkbox" name="include_inactive" value="on" {% if include_inactive %}checked{% endif %}>
     Include disabled
@@ -24,11 +29,40 @@
   </select>
   <button type="submit" class="btn btn--secondary">Apply filters</button>
 </form>
+{% if pagination.total > 0 %}
+<form id="bulk-listings-form" method="post" action="{% url 'product_bulk_listings' %}" class="bulk-listings-bar surface surface--filter">
+  {% csrf_token %}
+  <input type="hidden" name="return_qs" value="{{ preserve_qs }}">
+  {% if include_inactive %}<input type="hidden" name="include_inactive" value="on">{% endif %}
+  <label class="bulk-listings-bar__select-all checkbox-label checkbox-label--filter">
+    <input type="checkbox" id="bulk-select-all" aria-label="Select all products on this page">
+    Select all on page
+  </label>
+  <label class="bulk-listings-bar__action-label" for="bulk-action-select">Bulk action</label>
+  <select name="bulk_action" id="bulk-action-select" class="input input--select input--filter-control bulk-listings-bar__action" aria-label="Bulk action">
+    <option value="">Choose action…</option>
+    <optgroup label="Listing readiness">
+      <option value="bulk_ready">Mark selected — ready to post</option>
+      <option value="bulk_draft">Move selected — draft (clears marketplace flags)</option>
+    </optgroup>
+    {% if bulk_marketplaces %}
+    <optgroup label="Marketplaces (applies to ready products only)">
+      {% for ch in bulk_marketplaces %}
+      <option value="bulk_marketplace:{{ ch.id }}">Enable — {{ ch.name }}</option>
+      <option value="bulk_marketplace_off:{{ ch.id }}">Disable — {{ ch.name }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endif %}
+  </select>
+  <button type="submit" class="btn btn--secondary">Apply to selected</button>
+</form>
+{% endif %}
 <div class="table-wrap">
   <table class="table table--product-list" aria-label="Products">
     <caption class="visually-hidden">Product list: thumbnail, details, and actions per item.</caption>
     <thead class="table--product-list__thead">
       <tr>
+        <th scope="col" class="cell-bulk-check"><span class="visually-hidden">Select</span></th>
         <th scope="col" class="cell-thumb"><span class="visually-hidden">Thumbnail</span></th>
         <th scope="col" class="product-list-col-main"><span class="visually-hidden">Product details</span></th>
         <th scope="col" class="cell-actions--product"><span class="visually-hidden">Actions</span></th>
@@ -37,6 +71,9 @@
     <tbody>
       {% for p in products %}
       <tr class="product-row product-row--top {% if not p.active %}row-inactive{% endif %}">
+        <td rowspan="2" class="cell-bulk-check">
+          <input type="checkbox" name="product_ids" value="{{ p.id }}" form="bulk-listings-form" class="bulk-product-check" aria-label="Select {{ p.title }}">
+        </td>
         <td rowspan="2" class="cell-thumb cell-thumb--product">
           {% if p.images %}
           {% with cover=p.images.0 %}
@@ -66,6 +103,14 @@
             <span class="product-line__chunk">{{ p.quantity }}</span>
             <span class="product-line__sep" aria-hidden="true">·</span>
             <span class="product-line__chunk"><span class="badge">{{ p.status }}</span></span>
+            <span class="product-line__sep" aria-hidden="true">·</span>
+            <span class="product-line__chunk">
+              {% if p.listing_readiness == 'ready_to_post' %}
+              <span class="badge badge--listing-ready">Ready to list</span>
+              {% else %}
+              <span class="badge badge--listing-draft">Draft listing</span>
+              {% endif %}
+            </span>
           </div>
         </td>
         {# rowspan=2: one actions cell for both product lines (thumb column matches) #}
@@ -96,11 +141,20 @@
             <span class="product-line__sep" aria-hidden="true">·</span>
             <span class="product-line__chunk"><span class="product-line__label">L×W×D (cm)</span> {{ p.length_cm|default:"—" }} × {{ p.width_cm|default:"—" }} × {{ p.depth_cm|default:"—" }}</span>
             {% endif %}
+            {% if p.marketplace_listings %}
+            <span class="product-line__sep" aria-hidden="true">·</span>
+            <span class="product-line__chunk product-line__chunk--marketplaces" aria-label="Marketplace listings">
+              <span class="product-line__label">Marketplaces</span>
+              {% for cl in p.marketplace_listings %}
+              <span class="marketplace-chip {% if cl.enabled %}marketplace-chip--on{% else %}marketplace-chip--off{% endif %}" title="{{ cl.name }}{% if cl.last_refreshed_at %} · refreshed {{ cl.last_refreshed_at|slice:":10" }}{% endif %}">{{ cl.code }}</span>
+              {% endfor %}
+            </span>
+            {% endif %}
           </div>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="3" class="empty">No products yet. <a href="{% url 'product_create' %}" class="table-link">Add your first product</a>.</td></tr>
+      <tr><td colspan="4" class="empty">No products yet. <a href="{% url 'product_create' %}" class="table-link">Add your first product</a>.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -121,5 +175,40 @@
     {% endif %}
   </div>
 </nav>
+<script>
+(function () {
+  var master = document.getElementById("bulk-select-all");
+  var form = document.getElementById("bulk-listings-form");
+  if (!master || !form) return;
+  function rowChecks() {
+    return form.querySelectorAll('input.bulk-product-check[type="checkbox"]');
+  }
+  master.addEventListener("change", function () {
+    rowChecks().forEach(function (cb) { cb.checked = master.checked; });
+    master.indeterminate = false;
+  });
+  form.addEventListener("change", function (e) {
+    if (!e.target || !e.target.classList || !e.target.classList.contains("bulk-product-check")) return;
+    var all = true;
+    var any = false;
+    rowChecks().forEach(function (cb) {
+      if (cb.checked) any = true;
+      else all = false;
+    });
+    master.indeterminate = any && !all;
+    master.checked = all && rowChecks().length > 0;
+  });
+  form.addEventListener("submit", function (e) {
+    var sel = document.getElementById("bulk-action-select");
+    if (!sel || !sel.value) {
+      e.preventDefault();
+      return;
+    }
+    var n = 0;
+    rowChecks().forEach(function (cb) { if (cb.checked) n += 1; });
+    if (n === 0) e.preventDefault();
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}

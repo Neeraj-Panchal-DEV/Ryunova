@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Marketplaces — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Edit marketplace</h1>
+  <a href="{% url 'marketplace_list' %}" class="btn btn--secondary">Back to list</a>
+</div>
+<form method="post" class="form form--grid surface surface--form">
+  {% csrf_token %}
+  <label class="field">
+    <span class="field__label">Name</span>
+    <input name="name" class="input" required value="{{ marketplace.name|default:'' }}">
+  </label>
+  <label class="field field--full">
+    <span class="field__label">Description</span>
+    <textarea name="description" class="input input--textarea" rows="3">{{ marketplace.description|default:'' }}</textarea>
+  </label>
+  <label class="field">
+    <span class="field__label">Sort order</span>
+    <input name="sort_order" type="number" class="input" value="{{ marketplace.sort_order|default:0 }}">
+  </label>
+  <label class="field field--checkbox">
+    <span class="field__label">Active</span>
+    <label class="checkbox-label checkbox-label--inline">
+      <input type="checkbox" name="active" value="1" {% if marketplace.active %}checked{% endif %}>
+      Marketplace available for product listings
+    </label>
+  </label>
+  <label class="field field--full">
+    <span class="field__label">Integration requirements (JSON)</span>
+    <p class="field__hint">Structured notes: OAuth flags, credential names, API endpoints, etc.</p>
+    <textarea name="integration_requirements_json" class="input input--textarea" rows="12" spellcheck="false">{{ integration_json }}</textarea>
+  </label>
+  <div class="form-actions">
+    <button type="submit" class="btn btn--primary btn--lg">Save</button>
+  </div>
+</form>
+{% endblock %}

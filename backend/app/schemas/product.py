@@ -6,6 +6,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from app.models.product import ProductCondition
+from app.schemas.listing_channel import ProductMarketplaceListingRead
+
+ListingReadiness = Literal["draft", "ready_to_post"]
 
 
 class ProductImageRead(BaseModel):
@@ -56,6 +59,7 @@ class ProductCore(BaseModel):
     quantity: int = Field(ge=0, default=1)
     attributes: dict[str, Any] | None = None
     status: str = Field(default="active", max_length=32)
+    listing_readiness: ListingReadiness = "draft"
     active: bool = True
 
     @field_validator("colour", mode="before")
@@ -95,6 +99,7 @@ class ProductUpdate(BaseModel):
     quantity: int | None = Field(None, ge=0)
     attributes: dict[str, Any] | None = None
     status: str | None = Field(None, max_length=32)
+    listing_readiness: ListingReadiness | None = None
     active: bool | None = None
 
     @field_validator("colour", mode="before")
@@ -120,6 +125,7 @@ class ProductRead(ProductBase):
     images: list[ProductImageRead] = []
     brand_name: str | None = None  # set by API from ryunova_brands
     comment_count: int = 0
+    marketplace_listings: list[ProductMarketplaceListingRead] = []
 
 
 class ProductCommentCreate(BaseModel):

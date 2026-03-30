@@ -882,6 +882,34 @@ body.profile-crop-modal--open {
   max-width: 260px;
 }
 
+.input--filter-listing-readiness {
+  flex: 0 1 200px;
+  min-width: 168px;
+  max-width: 260px;
+}
+
+.bulk-listings-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.bulk-listings-bar__action {
+  flex: 1 1 240px;
+  min-width: 200px;
+  max-width: 420px;
+}
+
+.bulk-listings-bar__action-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
 .checkbox-label--filter {
   padding: 0;
   flex-shrink: 0;
@@ -981,6 +1009,24 @@ body.profile-crop-modal--open {
 }
 
 .cell-thumb { width: 56px; }
+
+.table--product-list td.cell-bulk-check,
+.table--product-list th.cell-bulk-check {
+  width: 40px;
+  min-width: 40px;
+  max-width: 44px;
+  text-align: center;
+  vertical-align: top;
+  padding: 14px 6px 14px 10px;
+  box-sizing: border-box;
+}
+
+.table--product-list .cell-bulk-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
 
 .thumb {
   width: 44px;
@@ -1192,6 +1238,46 @@ body.profile-crop-modal--open {
 .badge--muted {
   background: #eeeeee;
   color: var(--text-muted);
+}
+
+.badge--listing-ready {
+  background: #e8f5e9;
+  color: #1b5e20;
+  text-transform: none;
+}
+
+.badge--listing-draft {
+  background: #fff3e0;
+  color: #e65100;
+  text-transform: none;
+}
+
+.product-line__chunk--marketplaces {
+  align-items: center;
+}
+
+.marketplace-chip {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text-muted);
+}
+
+.marketplace-chip--on {
+  border-color: #81c784;
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.marketplace-chip--off {
+  opacity: 0.75;
 }
 
 .checkbox-label {

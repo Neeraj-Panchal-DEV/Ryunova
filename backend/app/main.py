@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.constants import DEFAULT_ORGANISATION_ID
 from app.media_storage import ensure_org_media_folders
-from app.routers import admin_users, auth, brands, categories, organisations, products, stats
+from app.routers import admin_users, auth, brands, categories, marketplaces, organisations, products, stats
 
 settings = get_settings()
 Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
@@ -30,6 +30,7 @@ api.include_router(admin_users.router)
 api.include_router(stats.router)
 api.include_router(brands.router)
 api.include_router(categories.router)
+api.include_router(marketplaces.router)
 api.include_router(products.router)
 api.mount("/media", StaticFiles(directory=str(settings.upload_dir)), name="media")
 

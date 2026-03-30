@@ -4,3 +4,4 @@
 
 mvp1_schema.sql
 migrations/002_product_comments.sql
+migrations/003_listing_channels.sql

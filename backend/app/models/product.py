@@ -14,6 +14,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.brand import RyunovaBrand
+    from app.models.listing_channel import RyunovaProductChannelListing
     from app.models.user import RyunovaUser
 
 
@@ -57,6 +58,9 @@ class RyunovaProductMaster(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     attributes: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    listing_readiness: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="draft", server_default="draft"
+    )  # draft | ready_to_post (channel flags only when ready_to_post)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -80,6 +84,10 @@ class RyunovaProductMaster(Base):
         back_populates="product",
         cascade="all, delete-orphan",
         order_by="RyunovaProductImage.sort_order",
+    )
+    channel_listings: Mapped[list["RyunovaProductChannelListing"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
     )
 
 

@@ -1,6 +1,6 @@
 import json
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit
 from uuid import UUID
 
 from django.contrib import messages
@@ -84,6 +84,7 @@ def _product_draft_from_post(request) -> dict:
         "image_url": (post.get("image_url") or "").strip(),
         "image_url_is_cover": post.get("image_url_is_cover") == "1",
         "cover_first_new": post.get("cover_first_new") == "1",
+        "listing_readiness": (post.get("listing_readiness") or "draft").strip(),
     }
 
 
@@ -111,9 +112,29 @@ def _product_edit_overlay_post(product: dict, request) -> dict:
         "image_url",
         "image_url_is_cover",
         "cover_first_new",
+        "listing_readiness",
     ):
         out[k] = d[k]
     return out
+
+
+def _marketplace_listing_items_from_post(request, listing_rows: list) -> list[dict]:
+    items: list[dict] = []
+    for cl in listing_rows:
+        if not isinstance(cl, dict):
+            continue
+        mid = cl.get("marketplace_id")
+        if not mid:
+            continue
+        ms = str(mid)
+        items.append(
+            {
+                "marketplace_id": ms,
+                "enabled": request.POST.get(f"marketplace_{ms}") == "on",
+                "mark_refreshed": request.POST.get(f"marketplace_refresh_{ms}") == "on",
+            }
+        )
+    return items
 
 
 def _org_id(request):
@@ -146,6 +167,26 @@ def _redirect_preserve_include(name: str, request):
     return redirect(u)
 
 
+_PRODUCT_LIST_QS_ALLOW = frozenset(
+    {"q", "status", "listing_readiness", "page_size", "page", "include_inactive"}
+)
+
+
+def _redirect_product_list(request):
+    """After bulk actions, return to the product list with the same filters when possible."""
+    u = reverse("product_list")
+    raw = (request.POST.get("return_qs") or "").strip()
+    if raw:
+        # Accept only whitelisted query keys (return_qs is generated server-side in product_list).
+        qd = parse_qsl(urlsplit("?" + raw).query, keep_blank_values=True)
+        filt = [(k, v) for k, v in qd if k in _PRODUCT_LIST_QS_ALLOW]
+        if filt:
+            return redirect(u + "?" + urlencode(filt))
+    if _include_inactive_from_request(request):
+        u += "?include_inactive=on"
+    return redirect(u)
+
+
 def _safe_json_for_script(obj) -> str:
     return json.dumps(obj, ensure_ascii=False).replace("<", "\\u003c")
 
@@ -159,6 +200,11 @@ def _render_product_form(
     title: str,
     taxonomy_include_inactive: bool,
 ):
+    all_marketplaces: list = []
+    try:
+        all_marketplaces = api_get("/marketplaces", _token(request), params={"include_inactive": "true"}, organisation_id=_org_id(request)) or []
+    except ApiError:
+        all_marketplaces = []
     return render(
         request,
         "catalog/product_form.html",
@@ -170,6 +216,7 @@ def _render_product_form(
             "categories_json": _safe_json_for_script(categories),
             "taxonomy_include_inactive": taxonomy_include_inactive,
             "is_add_product": title == "Add product",
+            "all_marketplaces": all_marketplaces,
         },
     )
 
@@ -249,14 +296,14 @@ def _import_product_image_from_url(
     )
 
 
-# Landing page: sales channels (full product vision — integrations ship over time)
-LANDING_CHANNELS = [
+# Landing page: marketplaces (full product vision — integrations ship over time)
+LANDING_MARKETPLACES = [
     {"code": "amz", "name": "Amazon", "blurb": "Marketplace listings, Buy Box, FBA & merchant-fulfilled orders."},
     {"code": "ebay", "name": "eBay", "blurb": "Auction & fixed-price, item specifics, and multi-site listings."},
     {"code": "shop", "name": "Shopify", "blurb": "Sync products, inventory, and orders with your storefront."},
     {"code": "meta", "name": "Facebook Marketplace", "blurb": "Reach local buyers with Meta commerce workflows."},
     {"code": "gum", "name": "Gumtree", "blurb": "Classified-style listings for AU and regional markets."},
-    {"code": "ucg", "name": "Used Coffee Gear", "blurb": "Specialty channel for used equipment and parts."},
+    {"code": "ucg", "name": "Used Coffee Gear", "blurb": "Specialty marketplace for used equipment and parts."},
 ]
 
 # Capability areas (full platform vision; MVP may implement a subset)
@@ -266,17 +313,17 @@ LANDING_CAPABILITY_GROUPS = [
         "items": [
             "Single source of truth for SKU, title, description, condition, brand & category",
             "Rich attributes (JSON/specs) for coffee machines and accessories",
-            "Multiple images and videos per product; cover media for listings and channels",
+            "Multiple images and videos per product; cover media for listings and marketplaces",
             "Enable/disable catalog rows without deleting history",
         ],
     },
     {
-        "title": "Multi-channel listing",
+        "title": "Multi-marketplace listing",
         "items": [
-            "Choose which channels each product lists to",
-            "Per-channel overrides for title, price, compare-at, and description",
+            "Choose which marketplaces each product lists to",
+            "Per-marketplace overrides for title, price, compare-at, and description",
             "Draft → publish → update → end listing lifecycle",
-            "Channel category / collection mapping",
+            "Marketplace category / collection mapping",
             "Listing job queue with durable status & retries",
         ],
     },
@@ -286,14 +333,14 @@ LANDING_CAPABILITY_GROUPS = [
             "Locations (warehouse, FBA, default) and per-SKU stock levels",
             "Reserved quantity for open orders — avoid overselling",
             "Low-stock thresholds and alerts",
-            "Near-real-time sync targets across connected channels",
+            "Near-real-time sync targets across connected marketplaces",
         ],
     },
     {
         "title": "Orders & fulfillment",
         "items": [
-            "Import orders from every connected channel into one dashboard",
-            "Preserve channel_id + external_order_id for audit and sync-back",
+            "Import orders from every connected marketplace into one dashboard",
+            "Preserve marketplace source id + external_order_id for audit and sync-back",
             "Fulfillment states, packing notes, tracking, and carrier events",
             "Partial and line-level fulfillment",
         ],
@@ -303,7 +350,7 @@ LANDING_CAPABILITY_GROUPS = [
         "items": [
             "Role-based access (admin, operator, viewer)",
             "App login with email/password or enterprise SSO (OAuth)",
-            "Encrypted or vault-referenced channel credentials",
+            "Encrypted or vault-referenced marketplace credentials",
             "Audit log for product, override, and listing changes after go-live",
             "Notifications via email, SMTP, or webhooks for key events",
         ],
@@ -311,8 +358,8 @@ LANDING_CAPABILITY_GROUPS = [
     {
         "title": "Configuration & scale",
         "items": [
-            "Channel registry: add new marketplaces without schema migrations",
-            "Per-channel API config, rate limits, and feature flags",
+            "Marketplace registry: add new integrations without schema migrations",
+            "Per-marketplace API config, rate limits, and feature flags",
             "App & system settings; per-user preferences",
             "Reporting hooks and export-friendly APIs",
         ],
@@ -326,7 +373,7 @@ def landing(request):
         request,
         "landing.html",
         {
-            "channels": LANDING_CHANNELS,
+            "marketplaces": LANDING_MARKETPLACES,
             "capability_groups": LANDING_CAPABILITY_GROUPS,
         },
     )
@@ -335,14 +382,14 @@ def landing(request):
 # Demo-only dashboard metrics (replace with live queries / APIs in future MVPs)
 DEMO_DASHBOARD_KPIS = [
     {"id": "products", "label": "Active products", "value": "128", "delta": "+12% vs last month"},
-    {"id": "listings", "label": "Live listings", "value": "342", "delta": "Across 6 channels"},
+    {"id": "listings", "label": "Live listings", "value": "342", "delta": "Across 6 marketplaces"},
     {"id": "orders_open", "label": "Open orders", "value": "47", "delta": "Awaiting fulfillment"},
-    {"id": "orders_today", "label": "Orders today", "value": "23", "delta": "Imported from channels"},
+    {"id": "orders_today", "label": "Orders today", "value": "23", "delta": "Imported from marketplaces"},
     {"id": "low_stock", "label": "Low-stock SKUs", "value": "8", "delta": "Below threshold"},
     {"id": "sync_jobs", "label": "Sync jobs (24h)", "value": "156", "delta": "96% succeeded"},
 ]
 
-DEMO_DASHBOARD_CHANNELS = [
+DEMO_DASHBOARD_MARKETPLACES = [
     {"name": "Amazon", "status": "Connected", "listings": "89", "demo": True},
     {"name": "eBay", "status": "Connected", "listings": "112", "demo": True},
     {"name": "Shopify", "status": "Sync delayed", "listings": "76", "demo": True},
@@ -381,7 +428,7 @@ def dashboard(request):
         {
             "demo_banner": True,
             "kpis": kpis,
-            "channel_rows": DEMO_DASHBOARD_CHANNELS,
+            "marketplace_rows": DEMO_DASHBOARD_MARKETPLACES,
             "activity": DEMO_DASHBOARD_ACTIVITY,
         },
     )
@@ -408,11 +455,14 @@ def product_list(request):
     if page_size not in _PRODUCT_PAGE_SIZES:
         page_size = _DEFAULT_PAGE_SIZE
 
+    listing_rf = request.GET.get("listing_readiness", "").strip() or None
     params = {"page": page, "page_size": page_size}
     if q:
         params["q"] = q
     if status_filter:
         params["status_filter"] = status_filter
+    if listing_rf:
+        params["listing_readiness_filter"] = listing_rf
     if include_inactive:
         params["include_inactive"] = "true"
     try:
@@ -431,9 +481,13 @@ def product_list(request):
         base_params["q"] = q
     if status_filter:
         base_params["status"] = status_filter
+    if listing_rf:
+        base_params["listing_readiness"] = listing_rf
     if include_inactive:
         base_params["include_inactive"] = "on"
     base_params["page_size"] = str(page_size)
+    preserve_params = {**base_params, "page": str(pg)}
+    preserve_qs = urlencode(preserve_params)
 
     def page_url(p: int) -> str:
         return "?" + urlencode({**base_params, "page": str(p)})
@@ -446,6 +500,11 @@ def product_list(request):
         "prev_url": page_url(max(1, pg - 1)) if pg > 1 else None,
         "next_url": page_url(min(total_pages, pg + 1)) if pg < total_pages else None,
     }
+    bulk_marketplaces: list = []
+    try:
+        bulk_marketplaces = api_get("/marketplaces", _token(request), organisation_id=_org_id(request)) or []
+    except ApiError:
+        bulk_marketplaces = []
     return render(
         request,
         "catalog/product_list.html",
@@ -453,9 +512,12 @@ def product_list(request):
             "products": products,
             "q": q,
             "status_filter": status_filter or "",
+            "listing_readiness_filter": listing_rf or "",
             "include_inactive": include_inactive,
             "page_sizes": _PRODUCT_PAGE_SIZES,
             "pagination": pagination,
+            "bulk_marketplaces": bulk_marketplaces,
+            "preserve_qs": preserve_qs,
         },
     )
 
@@ -487,8 +549,11 @@ def product_create(request):
                 "compare_at_price": request.POST.get("compare_at_price") or None,
                 "quantity": int(request.POST.get("quantity", "1") or 1),
                 "status": request.POST.get("status", "active"),
+                "listing_readiness": (request.POST.get("listing_readiness") or "draft").strip(),
                 "active": request.POST.get("active") == "1",
             }
+            if payload["listing_readiness"] not in ("draft", "ready_to_post"):
+                payload["listing_readiness"] = "draft"
         except ValueError as e:
             messages.error(request, str(e))
             return _render_product_form(
@@ -589,6 +654,9 @@ def product_edit(request, product_id: UUID):
             payload["compare_at_price"] = None if not cap else str(Decimal(cap))
             payload["quantity"] = int(request.POST.get("quantity", "1") or 1)
             payload["status"] = request.POST.get("status", "active")
+            payload["listing_readiness"] = (request.POST.get("listing_readiness") or "draft").strip()
+            if payload["listing_readiness"] not in ("draft", "ready_to_post"):
+                payload["listing_readiness"] = "draft"
             payload["active"] = request.POST.get("active") == "1"
             merged_attrs = _parse_import_attributes_json(request)
             if merged_attrs:
@@ -612,6 +680,17 @@ def product_edit(request, product_id: UUID):
                 payload,
                 organisation_id=_org_id(request),
             )
+            ch_rows = product.get("marketplace_listings") or []
+            if ch_rows and (product.get("listing_readiness") or "draft") == "ready_to_post":
+                try:
+                    api_patch_json(
+                        f"/products/{product_id}/marketplace-listings",
+                        token,
+                        {"items": _marketplace_listing_items_from_post(request, ch_rows)},
+                        organisation_id=_org_id(request),
+                    )
+                except ApiError as e:
+                    messages.warning(request, f"Product saved, but marketplace flags: {_err_msg(e)}")
             files_list = request.FILES.getlist("media")
             cover_first_new = request.POST.get("cover_first_new") == "1"
             existing_images = product.get("images") or []
@@ -1103,6 +1182,192 @@ def brand_set_active(request, brand_id: UUID):
             return JsonResponse({"error": _err_msg(e)}, status=400)
         messages.error(request, _err_msg(e))
     return redirect(next_url)
+
+
+def redirect_legacy_channel_list(request):
+    """Legacy path `/channels/` redirects to marketplace management."""
+    return redirect("marketplace_list")
+
+
+def redirect_legacy_channel_edit(request, channel_id: UUID):
+    """Legacy path `/channels/<uuid>/` redirects to marketplace edit."""
+    return redirect("marketplace_edit", marketplace_id=channel_id)
+
+
+def marketplace_list(request):
+    if red := _require_workspace(request):
+        return red
+    include_inactive = request.GET.get("include_inactive") == "on"
+    params: dict = {}
+    if include_inactive:
+        params["include_inactive"] = "true"
+    try:
+        marketplaces = api_get("/marketplaces", _token(request), params=params, organisation_id=_org_id(request)) or []
+    except ApiError as e:
+        messages.error(request, _err_msg(e))
+        marketplaces = []
+    return render(
+        request,
+        "catalog/marketplace_list.html",
+        {"marketplaces": marketplaces, "include_inactive": include_inactive},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def marketplace_edit(request, marketplace_id: UUID):
+    if red := _require_workspace(request):
+        return red
+    try:
+        marketplace = api_get(f"/marketplaces/{marketplace_id}", _token(request), organisation_id=_org_id(request))
+    except ApiError as e:
+        messages.error(request, _err_msg(e))
+        return redirect("marketplace_list")
+    if request.method == "POST":
+        raw_req = (request.POST.get("integration_requirements_json") or "").strip()
+        integ: dict | None = None
+        if raw_req:
+            try:
+                integ = json.loads(raw_req)
+                if not isinstance(integ, dict):
+                    raise ValueError("Integration requirements must be a JSON object.")
+            except (json.JSONDecodeError, ValueError) as e:
+                messages.error(request, str(e))
+                return render(
+                    request,
+                    "catalog/marketplace_form.html",
+                    {
+                        "marketplace": marketplace,
+                        "title": marketplace.get("name", "Marketplace"),
+                        "integration_json": raw_req or "{}",
+                    },
+                )
+        payload: dict = {
+            "name": (request.POST.get("name") or "").strip() or marketplace["name"],
+            "description": (request.POST.get("description") or "").strip() or None,
+            "active": request.POST.get("active") == "1",
+        }
+        try:
+            so = (request.POST.get("sort_order") or "").strip()
+            payload["sort_order"] = int(so) if so else marketplace.get("sort_order", 0)
+        except ValueError:
+            messages.error(request, "Sort order must be a number.")
+            return render(
+                request,
+                "catalog/marketplace_form.html",
+                {
+                    "marketplace": marketplace,
+                    "title": marketplace.get("name", "Marketplace"),
+                    "integration_json": (request.POST.get("integration_requirements_json") or "").strip() or "{}",
+                },
+            )
+        if integ is not None:
+            payload["integration_requirements"] = integ
+        elif raw_req == "":
+            payload["integration_requirements"] = marketplace.get("integration_requirements") or {}
+        try:
+            marketplace = api_patch_json(
+                f"/marketplaces/{marketplace_id}",
+                _token(request),
+                payload,
+                organisation_id=_org_id(request),
+            )
+            messages.success(request, "Marketplace saved.")
+            return redirect("marketplace_list")
+        except ApiError as e:
+            messages.error(request, _err_msg(e))
+            integ_err = request.POST.get("integration_requirements_json") or "{}"
+            return render(
+                request,
+                "catalog/marketplace_form.html",
+                {
+                    "marketplace": {
+                        **marketplace,
+                        "name": payload.get("name", marketplace.get("name")),
+                        "description": payload.get("description"),
+                    },
+                    "title": marketplace.get("name", "Marketplace"),
+                    "integration_json": integ_err,
+                },
+            )
+    title = marketplace.get("name", "Marketplace")
+    integ = marketplace.get("integration_requirements") or {}
+    try:
+        integration_json = json.dumps(integ, indent=2, ensure_ascii=False) if isinstance(integ, dict) else str(integ)
+    except TypeError:
+        integration_json = "{}"
+    return render(
+        request,
+        "catalog/marketplace_form.html",
+        {"marketplace": marketplace, "title": title, "integration_json": integration_json},
+    )
+
+
+@require_http_methods(["POST"])
+def product_bulk_listings(request):
+    if red := _require_workspace(request):
+        return red
+    action = (request.POST.get("bulk_action") or "").strip()
+    raw_ids = request.POST.getlist("product_ids")
+    try:
+        uuids = [UUID(x) for x in raw_ids if x.strip()]
+    except ValueError:
+        messages.error(request, "Invalid product selection.")
+        return _redirect_product_list(request)
+    if not uuids:
+        messages.error(request, "Select at least one product.")
+        return _redirect_product_list(request)
+    tok = _token(request)
+    oid = _org_id(request)
+    try:
+        if action == "bulk_ready":
+            api_post_json(
+                "/products/bulk-listing-readiness",
+                tok,
+                {"product_ids": [str(u) for u in uuids], "listing_readiness": "ready_to_post"},
+                organisation_id=oid,
+            )
+            messages.success(request, f"Marked {len(uuids)} product(s) as ready to post.")
+        elif action == "bulk_draft":
+            api_post_json(
+                "/products/bulk-listing-readiness",
+                tok,
+                {"product_ids": [str(u) for u in uuids], "listing_readiness": "draft"},
+                organisation_id=oid,
+            )
+            messages.success(request, f"Moved {len(uuids)} product(s) to draft (marketplace flags cleared).")
+        elif action.startswith("bulk_marketplace:"):
+            cid = action.split(":", 1)[1]
+            try:
+                UUID(cid)
+            except ValueError:
+                messages.error(request, "Invalid marketplace.")
+                return _redirect_product_list(request)
+            api_post_json(
+                "/products/bulk-marketplace-flags",
+                tok,
+                {"product_ids": [str(u) for u in uuids], "marketplace_id": cid, "enabled": True},
+                organisation_id=oid,
+            )
+            messages.success(request, f"Enabled marketplace for {len(uuids)} ready product(s) (skipped drafts).")
+        elif action.startswith("bulk_marketplace_off:"):
+            cid = action.split(":", 1)[1]
+            try:
+                UUID(cid)
+            except ValueError:
+                messages.error(request, "Invalid marketplace.")
+                return _redirect_product_list(request)
+            api_post_json(
+                "/products/bulk-marketplace-flags",
+                tok,
+                {"product_ids": [str(u) for u in uuids], "marketplace_id": cid, "enabled": False},
+                organisation_id=oid,
+            )
+            messages.success(request, f"Disabled marketplace for {len(uuids)} ready product(s) (skipped drafts).")
+        else:
+            messages.error(request, "Unknown bulk action.")
+    except ApiError as e:
+        messages.error(request, _err_msg(e))
+    return _redirect_product_list(request)
 
 
 def privacy_policy(request):

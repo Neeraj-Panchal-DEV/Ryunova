@@ -24,4 +24,9 @@ urlpatterns = [
     path("brands/sort-by-name/", views.brand_sort_by_name, name="brand_sort_by_name"),
     path("brands/<uuid:brand_id>/edit/", views.brand_edit, name="brand_edit"),
     path("brands/<uuid:brand_id>/set-active/", views.brand_set_active, name="brand_set_active"),
+    path("marketplaces/", views.marketplace_list, name="marketplace_list"),
+    path("marketplaces/<uuid:marketplace_id>/", views.marketplace_edit, name="marketplace_edit"),
+    path("channels/", views.redirect_legacy_channel_list),
+    path("channels/<uuid:channel_id>/", views.redirect_legacy_channel_edit),
+    path("products/bulk-listings/", views.product_bulk_listings, name="product_bulk_listings"),
 ]

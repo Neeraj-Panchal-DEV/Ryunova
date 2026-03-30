@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Marketplaces — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Marketplace management</h1>
+</div>
+<p class="field__hint">Configure e-commerce and marketplace integrations (credentials, API notes). Product-level posting flags are set on each <a href="{% url 'product_list' %}">product</a>.</p>
+<form method="get" class="filter-bar surface surface--filter">
+  <label class="checkbox-label checkbox-label--filter">
+    <input type="checkbox" name="include_inactive" value="on" {% if include_inactive %}checked{% endif %}>
+    Include inactive marketplaces
+  </label>
+  <button type="submit" class="btn btn--secondary">Apply</button>
+</form>
+<div class="table-wrap">
+  <table class="table" aria-label="Marketplaces">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Code</th>
+        <th>Sort</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in marketplaces %}
+      <tr>
+        <td><strong>{{ c.name }}</strong></td>
+        <td><code>{{ c.code }}</code></td>
+        <td>{{ c.sort_order }}</td>
+        <td>{% if c.active %}Yes{% else %}No{% endif %}</td>
+        <td><a href="{% url 'marketplace_edit' c.id %}" class="btn btn--small">Edit</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="empty">No marketplaces. Run database migrations.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
@@ -14,10 +15,17 @@ from app.models.brand import RyunovaBrand
 from app.media_storage import delete_key as delete_media_key, write_bytes as write_media_bytes
 from app.org_access import OrganisationContextDep, assert_product_in_context
 from app.models.category import RyunovaCategory
+from app.models.listing_channel import RyunovaListingChannel, RyunovaProductChannelListing
 from app.models.product import ProductCondition, RyunovaProductImage, RyunovaProductMaster
 from app.models.product_comment import RyunovaProductComment
 from app.models.user import RyunovaUser
 from app.product_sku import create_product_with_allocated_sku
+from app.schemas.listing_channel import (
+    BulkSetListingReadinessBody,
+    BulkSetMarketplaceFlagsBody,
+    ProductMarketplaceListingRead,
+    ProductMarketplaceListingsPatch,
+)
 from app.schemas.product import (
     ProductCommentCreate,
     ProductCommentRead,
@@ -108,18 +116,60 @@ def _comment_counts_for_products(db: Session, product_ids: list[uuid.UUID]) -> d
     return {pid: int(n) for pid, n in db.execute(stmt).all()}
 
 
-def _product_to_read(p: RyunovaProductMaster, *, comment_count: int = 0) -> ProductRead:
+def _active_channels(db: Session) -> list[RyunovaListingChannel]:
+    return list(
+        db.scalars(
+            select(RyunovaListingChannel)
+            .where(RyunovaListingChannel.active.is_(True))
+            .order_by(RyunovaListingChannel.sort_order, RyunovaListingChannel.name)
+        ).all()
+    )
+
+
+def _pcl_by_product(
+    db: Session, product_ids: list[uuid.UUID]
+) -> dict[tuple[uuid.UUID, uuid.UUID], RyunovaProductChannelListing]:
+    if not product_ids:
+        return {}
+    rows = db.scalars(
+        select(RyunovaProductChannelListing).where(RyunovaProductChannelListing.product_id.in_(product_ids))
+    ).all()
+    return {(r.product_id, r.channel_id): r for r in rows}
+
+
+def _product_to_read(
+    p: RyunovaProductMaster,
+    *,
+    comment_count: int = 0,
+    channels: list[RyunovaListingChannel] | None = None,
+    pcl_map: dict[tuple[uuid.UUID, uuid.UUID], RyunovaProductChannelListing] | None = None,
+) -> ProductRead:
     images_out: list[ProductImageRead] = []
     for img in _ordered_product_images(p):
         pr = ProductImageRead.model_validate(img)
         pr.url = _media_url(img.s3_key)
         images_out.append(pr)
     brand_name = p.brand_rel.name if p.brand_rel else None
+    ch_list: list[ProductMarketplaceListingRead] = []
+    if channels is not None and pcl_map is not None:
+        for ch in channels:
+            row = pcl_map.get((p.id, ch.id))
+            ch_list.append(
+                ProductMarketplaceListingRead(
+                    marketplace_id=ch.id,
+                    code=ch.code,
+                    name=ch.name,
+                    enabled=row.enabled if row else False,
+                    last_refreshed_at=row.last_refreshed_at if row else None,
+                    posted_at=row.posted_at if row else None,
+                )
+            )
     data = ProductRead.model_validate(p).model_copy(
         update={
             "images": images_out,
             "brand_name": brand_name,
             "comment_count": comment_count,
+            "marketplace_listings": ch_list,
             **product_audit_labels(p),
         }
     )
@@ -140,6 +190,7 @@ def _product_list_where(
     include_inactive: bool,
     q: str | None,
     status_filter: str | None,
+    listing_readiness_filter: str | None,
     organisation_id: uuid.UUID | None,
 ) -> list:
     conditions: list = []
@@ -150,6 +201,8 @@ def _product_list_where(
         conditions.append(or_(RyunovaProductMaster.title.ilike(like), RyunovaProductMaster.sku.ilike(like)))
     if status_filter:
         conditions.append(RyunovaProductMaster.status == status_filter)
+    if listing_readiness_filter:
+        conditions.append(RyunovaProductMaster.listing_readiness == listing_readiness_filter)
     if organisation_id is not None:
         conditions.append(RyunovaProductMaster.organisation_id == organisation_id)
     return conditions
@@ -177,6 +230,7 @@ def list_products(
     ctx: OrganisationContextDep,
     q: str | None = None,
     status_filter: str | None = None,
+    listing_readiness_filter: str | None = None,
     include_inactive: Annotated[bool, Query(description="Include disabled products (active=false)")] = False,
     page: Annotated[int, Query(ge=1, description="1-based page index")] = 1,
     page_size: Annotated[
@@ -193,6 +247,7 @@ def list_products(
         include_inactive=include_inactive,
         q=q,
         status_filter=status_filter,
+        listing_readiness_filter=listing_readiness_filter,
         organisation_id=ctx.organisation_id,
     )
     count_stmt = select(func.count()).select_from(RyunovaProductMaster)
@@ -216,7 +271,11 @@ def list_products(
     rows = db.scalars(stmt).unique().all()
     ids = [p.id for p in rows]
     counts = _comment_counts_for_products(db, ids)
-    items = [_product_to_read(p, comment_count=counts.get(p.id, 0)) for p in rows]
+    channels = _active_channels(db)
+    pcl_map = _pcl_by_product(db, ids)
+    items = [
+        _product_to_read(p, comment_count=counts.get(p.id, 0), channels=channels, pcl_map=pcl_map) for p in rows
+    ]
     return ProductListPage(
         items=items,
         total=total,
@@ -243,6 +302,84 @@ def scrape_preview(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Scrape failed: {e!s}") from e
     return ScrapePreviewResponse(**raw)
+
+
+@router.post("/bulk-listing-readiness", status_code=status.HTTP_200_OK)
+def bulk_set_listing_readiness(
+    body: BulkSetListingReadinessBody,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+    ctx: OrganisationContextDep,
+) -> dict[str, int]:
+    """Set listing readiness (draft / ready_to_post) on many products. Clears marketplace flags when set to draft."""
+    oid = ctx.require_organisation_id()
+    n = 0
+    for pid in body.product_ids:
+        p = db.get(RyunovaProductMaster, pid)
+        if not p or p.organisation_id != oid:
+            continue
+        p.listing_readiness = body.listing_readiness
+        p.updated_by_user_id = user.id
+        if body.listing_readiness == "draft":
+            db.execute(
+                update(RyunovaProductChannelListing)
+                .where(RyunovaProductChannelListing.product_id == pid)
+                .values(enabled=False)
+            )
+        n += 1
+    db.commit()
+    return {"updated": n}
+
+
+@router.post("/bulk-marketplace-flags", status_code=status.HTTP_200_OK)
+def bulk_set_marketplace_flags(
+    body: BulkSetMarketplaceFlagsBody,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+    ctx: OrganisationContextDep,
+) -> dict[str, int]:
+    """Enable or disable one marketplace for many products (only products in ready_to_post)."""
+    oid = ctx.require_organisation_id()
+    ch = db.get(RyunovaListingChannel, body.marketplace_id)
+    if not ch:
+        raise HTTPException(status_code=404, detail="Marketplace not found")
+    now = datetime.now(timezone.utc)
+    n = 0
+    for pid in body.product_ids:
+        p = db.get(RyunovaProductMaster, pid)
+        if not p or p.organisation_id != oid:
+            continue
+        if p.listing_readiness != "ready_to_post":
+            continue
+        if body.enabled and not ch.active:
+            raise HTTPException(status_code=400, detail=f"Marketplace {ch.code} is inactive")
+        row = db.scalar(
+            select(RyunovaProductChannelListing).where(
+                RyunovaProductChannelListing.product_id == pid,
+                RyunovaProductChannelListing.channel_id == body.marketplace_id,
+            )
+        )
+        if row:
+            row.enabled = body.enabled
+            if body.enabled:
+                row.posted_at = row.posted_at or now
+                row.last_refreshed_at = now
+            else:
+                row.last_refreshed_at = None
+        else:
+            db.add(
+                RyunovaProductChannelListing(
+                    product_id=pid,
+                    channel_id=body.marketplace_id,
+                    enabled=body.enabled,
+                    posted_at=now if body.enabled else None,
+                    last_refreshed_at=now if body.enabled else None,
+                )
+            )
+        p.updated_by_user_id = user.id
+        n += 1
+    db.commit()
+    return {"updated": n}
 
 
 @router.get("/{product_id}/comments", response_model=list[ProductCommentRead])
@@ -326,7 +463,9 @@ def get_product(
         raise HTTPException(status_code=404, detail="Product not found")
     assert_product_in_context(db, ctx, p.organisation_id)
     counts = _comment_counts_for_products(db, [product_id])
-    return _product_to_read(p, comment_count=counts.get(product_id, 0))
+    channels = _active_channels(db)
+    pcl_map = _pcl_by_product(db, [product_id])
+    return _product_to_read(p, comment_count=counts.get(product_id, 0), channels=channels, pcl_map=pcl_map)
 
 
 @router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
@@ -358,6 +497,7 @@ def create_product(
             quantity=body.quantity,
             attributes=body.attributes,
             status=body.status,
+            listing_readiness=body.listing_readiness,
             active=body.active,
             created_by_user_id=user.id,
             updated_by_user_id=user.id,
@@ -377,7 +517,77 @@ def create_product(
     )
     assert p
     counts = _comment_counts_for_products(db, [p.id])
-    return _product_to_read(p, comment_count=counts.get(p.id, 0))
+    channels = _active_channels(db)
+    pcl_map = _pcl_by_product(db, [p.id])
+    return _product_to_read(p, comment_count=counts.get(p.id, 0), channels=channels, pcl_map=pcl_map)
+
+
+@router.patch("/{product_id}/marketplace-listings", response_model=ProductRead)
+def patch_product_marketplace_listings(
+    product_id: uuid.UUID,
+    body: ProductMarketplaceListingsPatch,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+    ctx: OrganisationContextDep,
+) -> ProductRead:
+    p = db.scalar(
+        select(RyunovaProductMaster)
+        .options(*_product_options())
+        .where(RyunovaProductMaster.id == product_id)
+    )
+    if not p:
+        raise HTTPException(status_code=404, detail="Product not found")
+    assert_product_in_context(db, ctx, p.organisation_id)
+    if p.listing_readiness != "ready_to_post" and any(it.enabled for it in body.items):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set listing readiness to Ready to post before enabling marketplace flags.",
+        )
+    now = datetime.now(timezone.utc)
+    for it in body.items:
+        ch = db.get(RyunovaListingChannel, it.marketplace_id)
+        if not ch:
+            raise HTTPException(status_code=400, detail=f"Unknown marketplace {it.marketplace_id}")
+        if it.enabled and not ch.active:
+            raise HTTPException(status_code=400, detail=f"Marketplace {ch.code} is inactive")
+        row = db.scalar(
+            select(RyunovaProductChannelListing).where(
+                RyunovaProductChannelListing.product_id == product_id,
+                RyunovaProductChannelListing.channel_id == it.marketplace_id,
+            )
+        )
+        if row:
+            row.enabled = it.enabled
+            if it.mark_refreshed and it.enabled:
+                row.last_refreshed_at = now
+            elif it.enabled:
+                row.posted_at = row.posted_at or now
+                row.last_refreshed_at = now
+            else:
+                row.last_refreshed_at = None
+        else:
+            db.add(
+                RyunovaProductChannelListing(
+                    product_id=product_id,
+                    channel_id=it.marketplace_id,
+                    enabled=it.enabled,
+                    posted_at=now if it.enabled else None,
+                    last_refreshed_at=now if it.enabled else None,
+                )
+            )
+    p.updated_by_user_id = user.id
+    db.commit()
+    db.refresh(p)
+    p = db.scalar(
+        select(RyunovaProductMaster)
+        .options(*_product_options())
+        .where(RyunovaProductMaster.id == product_id)
+    )
+    assert p
+    counts = _comment_counts_for_products(db, [product_id])
+    channels = _active_channels(db)
+    pcl_map = _pcl_by_product(db, [product_id])
+    return _product_to_read(p, comment_count=counts.get(product_id, 0), channels=channels, pcl_map=pcl_map)
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
@@ -406,6 +616,12 @@ def update_product(
     _ensure_brand_category_in_org(db, p.organisation_id, new_brand, new_cat)
     for k, v in data.items():
         setattr(p, k, v)
+    if data.get("listing_readiness") == "draft":
+        db.execute(
+            update(RyunovaProductChannelListing)
+            .where(RyunovaProductChannelListing.product_id == product_id)
+            .values(enabled=False)
+        )
     p.updated_by_user_id = user.id
     db.commit()
     db.refresh(p)
@@ -416,7 +632,9 @@ def update_product(
     )
     assert p
     counts = _comment_counts_for_products(db, [product_id])
-    return _product_to_read(p, comment_count=counts.get(product_id, 0))
+    channels = _active_channels(db)
+    pcl_map = _pcl_by_product(db, [product_id])
+    return _product_to_read(p, comment_count=counts.get(product_id, 0), channels=channels, pcl_map=pcl_map)
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)

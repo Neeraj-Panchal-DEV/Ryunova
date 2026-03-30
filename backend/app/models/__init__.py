@@ -8,6 +8,10 @@ from app.models.organisation import (
 from app.models.category import RyunovaCategory
 from app.models.brand import RyunovaBrand
 from app.models.product import RyunovaProductMaster, RyunovaProductImage, ProductCondition
+from app.models.listing_channel import (
+    RyunovaListingChannel,
+    RyunovaProductChannelListing,
+)
 
 __all__ = [
     "RyunovaUser",
@@ -21,4 +25,6 @@ __all__ = [
     "RyunovaProductMaster",
     "RyunovaProductImage",
     "ProductCondition",
+    "RyunovaListingChannel",
+    "RyunovaProductChannelListing",
 ]
