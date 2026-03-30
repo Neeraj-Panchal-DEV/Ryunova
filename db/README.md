@@ -33,7 +33,7 @@ Deploy (`.github/workflows/deploy-prod.yml`) runs **`scripts/run_ryunova_migrati
 
 1. Creates the target database **if it does not exist** (admin must be allowed to `CREATE DATABASE`, or create the DB manually).
 2. Ensures the **app role** from `PROD_POSTGRES_APPL_*` exists and sets password.
-3. Applies SQL files listed in **`db/migrations/order.txt`** in order (e.g. **`mvp1_schema.sql`**, then incremental files such as **`002_product_comments.sql`**), skipping any filename already recorded in **`ryunova.ryunova_schema_migrations`**.
+3. Applies SQL files listed in **`db/migrations/order.txt`** in order. Paths are **relative to `db/`** (e.g. **`mvp1_schema.sql`**, **`migrations/002_product_comments.sql`**). The recorded name in **`ryunova_schema_migrations`** is the **basename** of each path; skips if already applied.
 4. Grants DML on **`ryunova.ryunova_*`** app tables (not **`ryunova.ryunova_schema_migrations`**) to the app role.
 
 FinText continues to use schema **`fintext`** in the same **`latrobe_apps_db`** when shared.
@@ -41,7 +41,7 @@ FinText continues to use schema **`fintext`** in the same **`latrobe_apps_db`** 
 ### Future schema changes
 
 1. Add **`db/migrations/002_add_feature.sql`** (or similar), idempotent **`IF NOT EXISTS`** / **`ADD COLUMN IF NOT EXISTS`** where possible.
-2. Append **only the filename** to the end of **`db/migrations/order.txt`**.
+2. Append the path **relative to `db/`** to the end of **`db/migrations/order.txt`** (e.g. **`migrations/002_add_feature.sql`**).
 3. Merge to **`prod`** and deploy.
 
 ---
