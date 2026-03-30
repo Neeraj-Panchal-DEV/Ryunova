@@ -4,7 +4,7 @@ Single source of truth for **deploying RyuNova to AWS**: EC2, Application Load B
 
 **Compose file:** `docker-compose.app-only.yml` at **`/opt/apps/app_ryunova`** (project name **`ryunova`**). There is **no nginx** container in this stack—**ALB** routes to host ports **8010** (FastAPI) and **8011** (Django).
 
-**Related:** `deploy/ec2.env.example`, `.github/workflows/deploy-prod.yml`, `scripts/deploy_generate_ec2_env.py`, `LOCAL_DEVELOPMENT.md` (local only).
+**Related:** `deploy/ec2.env.example`, `.github/workflows/deploy-prod.yml`, `scripts/deploy_generate_ec2_env.py`, `LOCAL_DEVELOPMENT.md` (local only). **User and organisation authorisation (JWT, tenant scope, Django session):** **[SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md)**.
 
 ---
 
@@ -38,6 +38,19 @@ Single source of truth for **deploying RyuNova to AWS**: EC2, Application Load B
 4. **Health checks:** API target group: `GET /health` on **8010** (`{"status":"ok"}`). The GitHub workflow checks **`http://127.0.0.1:8010/health` over SSH** (not from the runner) so security groups do not need to open 8010 to GitHub.
 
 5. **Quick check from your laptop:** After DNS propagates, open **`https://api.<your-domain>/health`** — expect **`{"status":"ok"}`**. Then **`https://api.<your-domain>/api/v1/media/`** may 404 (no index), but a **real avatar path** from the DB should return **200** with image bytes if routing and files are correct.
+
+### HTTPS certificate and nested API hostnames
+
+Deploy sets **`API_PUBLIC_URL`** / **`RYUNOVA_API_PUBLIC`** to **`https://api.<PROD_SITE_DOMAIN>`** (unless **`PROD_API_PUBLIC_HOST`** / **`API_HOST_VAL`** overrides it). If **`PROD_SITE_DOMAIN`** is **`ryunova.example.com`**, the API host is **`api.ryunova.example.com`** — **two** labels under the registrable domain, not one.
+
+A single ACM wildcard such as **`*.latrobecomputing.co.in`** covers only **one** subdomain level (e.g. **`ryunova.latrobecomputing.co.in`**). It does **not** cover **`api.ryunova.latrobecomputing.co.in`**. The ALB then serves a certificate whose **Subject Alternative Names** do not match the API hostname → browsers show a **security warning** when opening the API or loading **`<img src="https://api.ryunova…/api/v1/media/…">`**, and images on **`/products/`** appear to **spin or fail**.
+
+**Fix (pick one):**
+
+1. **Extend the ACM certificate** used on the ALB **HTTPS listener** to include **`api.ryunova.<your-domain>`** (or a wildcard **`*.ryunova.<your-domain>`** if that matches your DNS layout). Complete **DNS validation** in ACM, then **associate the new cert** with the listener (same region as the ALB).
+2. **Or** use a **flatter** API hostname that your existing wildcard already covers, e.g. **`ryunova-api.latrobecomputing.co.in`**, by setting GitHub secret **`PROD_API_PUBLIC_HOST`** to that hostname (no `https://`). Point DNS and add an **ALB listener rule**: **Host** = that name → target group → port **8010**. Redeploy so **`.env`** gets the matching **`API_PUBLIC_URL`**.
+
+After the certificate matches the hostname, **`https://api…/health`** should load **without** a warning and product images should load normally.
 
 ---
 

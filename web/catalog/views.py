@@ -17,6 +17,26 @@ def _token(request):
     return request.session.get("access_token")
 
 
+def _parse_import_attributes_json(request) -> dict | None:
+    raw = (request.POST.get("import_attributes_json") or "").strip()
+    if not raw:
+        return None
+    try:
+        d = json.loads(raw)
+        return d if isinstance(d, dict) else None
+    except json.JSONDecodeError:
+        return None
+
+
+def _merge_product_attributes(existing: dict | None, overlay: dict | None) -> dict | None:
+    if not existing and not overlay:
+        return None
+    out = dict(existing or {})
+    if overlay:
+        out.update(overlay)
+    return out if out else None
+
+
 def _post_optional_uuid_str(raw: str | None) -> str | None:
     """Empty / missing optional FK from POST → None for JSON (never the string 'None' from str(None))."""
     if raw is None:
@@ -481,6 +501,9 @@ def product_create(request):
             )
         if payload["compare_at_price"]:
             payload["compare_at_price"] = str(Decimal(payload["compare_at_price"]))
+        merged_attrs = _parse_import_attributes_json(request)
+        if merged_attrs:
+            payload["attributes"] = merged_attrs
         created_pid = None
         try:
             created = api_post_json("/products", _token(request), payload, organisation_id=_org_id(request))
@@ -567,6 +590,10 @@ def product_edit(request, product_id: UUID):
             payload["quantity"] = int(request.POST.get("quantity", "1") or 1)
             payload["status"] = request.POST.get("status", "active")
             payload["active"] = request.POST.get("active") == "1"
+            merged_attrs = _parse_import_attributes_json(request)
+            if merged_attrs:
+                ex = product.get("attributes") if isinstance(product.get("attributes"), dict) else {}
+                payload["attributes"] = _merge_product_attributes(ex, merged_attrs)
         except ValueError as e:
             messages.error(request, str(e))
             return _render_product_form(
@@ -641,6 +668,64 @@ def product_edit(request, product_id: UUID):
         title="Edit product",
         taxonomy_include_inactive=True,
     )
+
+
+@require_http_methods(["GET", "POST"])
+def product_comments_api(request, product_id: UUID):
+    if not _token(request):
+        return JsonResponse({"detail": "Unauthorized"}, status=401)
+    if needs_workspace_selection(request):
+        return JsonResponse({"detail": "Workspace not selected"}, status=403)
+    token = _token(request)
+    oid = _org_id(request)
+    if request.method == "GET":
+        try:
+            data = api_get(f"/products/{product_id}/comments", token, organisation_id=oid)
+        except ApiError as e:
+            return JsonResponse({"detail": _err_msg(e)}, status=e.status_code or 400)
+        return JsonResponse(data, safe=False)
+    try:
+        body = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+    try:
+        data = api_post_json(
+            f"/products/{product_id}/comments",
+            token,
+            body,
+            organisation_id=oid,
+        )
+    except ApiError as e:
+        return JsonResponse({"detail": _err_msg(e)}, status=e.status_code or 400)
+    return JsonResponse(data)
+
+
+@require_http_methods(["POST"])
+def product_scrape_preview(request):
+    if not _token(request):
+        return JsonResponse({"detail": "Unauthorized"}, status=401)
+    if needs_workspace_selection(request):
+        return JsonResponse({"detail": "Workspace not selected"}, status=403)
+    try:
+        payload = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+    url = (payload.get("url") or "").strip()
+    source = (payload.get("source") or "shopify").strip().lower()
+    if source not in ("shopify", "ebay"):
+        source = "shopify"
+    if not url:
+        return JsonResponse({"detail": "url is required"}, status=400)
+    try:
+        data = api_post_json(
+            "/products/scrape-preview",
+            _token(request),
+            {"url": url, "source": source},
+            organisation_id=_org_id(request),
+        )
+    except ApiError as e:
+        return JsonResponse({"detail": _err_msg(e)}, status=e.status_code or 502)
+    return JsonResponse(data, safe=False)
 
 
 def product_delete(request, product_id: UUID):

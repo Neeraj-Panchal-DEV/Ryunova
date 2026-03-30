@@ -71,6 +71,7 @@
         {# rowspan=2: one actions cell for both product lines (thumb column matches) #}
         <td rowspan="2" class="cell-actions--product">
           <div class="cell-actions-product__toolbar">
+            <a href="{% url 'product_edit' p.id %}#comments" class="btn btn--small product-list-comments-btn product-comments-btn{% if p.comment_count|default:0 %} product-comments-btn--has{% endif %}" data-product-id="{{ p.id }}">Comments{% if p.comment_count|default:0 %} <span class="product-comments-count">{{ p.comment_count }}</span>{% endif %}</a>
             <a href="{% url 'product_edit' p.id %}" class="btn btn--small">Edit</a>
             <form method="post" action="{% url 'product_delete' p.id %}" class="inline-form" onsubmit="return confirm('Delete this product?');">
               {% csrf_token %}

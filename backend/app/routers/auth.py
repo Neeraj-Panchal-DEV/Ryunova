@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -154,7 +155,21 @@ def _resolve_avatar_organisation_id(
 
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, db: Annotated[Session, Depends(get_db)]) -> LoginResponse:
-    user = db.scalar(select(RyunovaUser).where(RyunovaUser.email == body.email.lower().strip()))
+    try:
+        user = db.scalar(select(RyunovaUser).where(RyunovaUser.email == body.email.lower().strip()))
+    except ProgrammingError as e:
+        orig = getattr(e, "orig", None)
+        sqlstate = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
+        if sqlstate == "42P01":
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Database schema mismatch: expected ryunova.ryunova_* tables. "
+                    "New DB: apply db/mvp1_schema.sql (+ db/migrations/order.txt). "
+                    "Legacy public.ryunova_*: run db/move_public_tables_to_ryunova_schema.sql (see db/README.md)."
+                ),
+            ) from e
+        raise
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     if not user.is_active:

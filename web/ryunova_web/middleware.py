@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from django.conf import settings
 
+from ryunova_web.workspace import reconcile_workspace_session
+
 # FastAPI default dev URLs embedded in JSON/HTML from the API
 _LOCAL_API_PREFIXES = (
     "http://127.0.0.1:",
@@ -53,3 +55,14 @@ class RewriteApiPublicUrlMiddleware:
         if response.has_header("Content-Length"):
             del response["Content-Length"]
         return response
+
+
+class WorkspaceSessionMiddleware:
+    """Keep organisation scope consistent with membership (single-org auto-scope, no forged org id)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        reconcile_workspace_session(request)
+        return self.get_response(request)

@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from app.models.product import ProductCondition
 
@@ -119,6 +119,48 @@ class ProductRead(ProductBase):
     updated_by_label: str | None = None
     images: list[ProductImageRead] = []
     brand_name: str | None = None  # set by API from ryunova_brands
+    comment_count: int = 0
+
+
+class ProductCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=8000)
+
+    @field_validator("body", mode="before")
+    @classmethod
+    def _strip_body(cls, v: object) -> str:
+        s = str(v or "").strip()
+        if not s:
+            raise ValueError("Comment cannot be empty")
+        return s
+
+
+class ProductCommentRead(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID
+    body: str
+    created_at: datetime
+    author_display_name: str
+
+
+class ScrapePreviewRequest(BaseModel):
+    url: HttpUrl
+    source: Literal["shopify", "ebay"] = "shopify"
+
+
+class ScrapePreviewResponse(BaseModel):
+    """Mapped fields for product form prefill (client sends attributes on save)."""
+
+    title: str | None = None
+    description: str | None = None
+    condition: ProductCondition = ProductCondition.new
+    base_price: str | None = None
+    compare_at_price: str | None = None
+    quantity: int = 1
+    model: str | None = None
+    colour: str | None = None
+    suggested_brand_name: str | None = None
+    data_origin: str
+    import_source_url: str
 
 
 class ProductListPage(BaseModel):

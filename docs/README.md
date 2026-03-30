@@ -17,6 +17,7 @@
 |----------|-------------|
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Full PostgreSQL schema (`ryunova_*`) |
 | [MULTI_TENANT.md](MULTI_TENANT.md) | Organisations, platform vs org admin, bootstrap |
+| [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) | User and organisation security: JWT, `X-Organisation-Id`, Django session reconciliation |
 | [MVP1_BUILD_AND_DELIVERY.md](MVP1_BUILD_AND_DELIVERY.md) | MVP1 scope and handoff |
 | [SERVICES.md](SERVICES.md) | Service overview |
 | [TURNSTILE.md](TURNSTILE.md) | Optional Cloudflare Turnstile on login |

@@ -41,6 +41,8 @@ For step-by-step Turnstile setup (dashboard, domains, `.env`, verification), see
 - On **EC2 Docker** (see `docs/DEPLOYMENT_EC2_ALB.md`): set **`RYUNOVA_API_BASE=http://api:8010/api/v1`** so Django’s server-side HTTP calls use the Compose network. Optionally set **`RYUNOVA_API_BASE_INTERNAL`** if you need a different override; **`RYUNOVA_API_PUBLIC`** is the browser-facing API base (HTTPS).
 - Configure SMTP on **both** apps (see `docs/EMAIL_SETTINGS.md`).
 
+Variables here (hosts, CORS, cookies/TLS behind a proxy, SMTP, Turnstile) affect **transport**, **cookies**, and **anti-abuse**. **Who may access which organisation’s data** is enforced in FastAPI (JWT + membership) and Django session rules — see **[SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md)**.
+
 ## Aligning with FinText (dragon-latrobe_fintext)
 
 FinText uses the same style of variables (`EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`, `EMAIL_HOST_USER_NAME`, `SITE_DOMAIN` / `SITE_URL`). **Do not commit real passwords.** Copy structure from FinText’s `.env.example` into RyuNova’s `web/.env.example` / `backend/.env.example` and fill values only on the machine that deploys.

@@ -46,6 +46,7 @@ MIDDLEWARE = [
         else []
     ),
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "ryunova_web.middleware.WorkspaceSessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

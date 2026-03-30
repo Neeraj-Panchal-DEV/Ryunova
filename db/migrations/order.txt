@@ -3,3 +3,4 @@
 # Paths are relative to the repo db/ directory.
 
 mvp1_schema.sql
+002_product_comments.sql

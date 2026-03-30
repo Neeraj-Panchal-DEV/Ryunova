@@ -15,8 +15,12 @@ from app.media_storage import delete_key as delete_media_key, write_bytes as wri
 from app.org_access import OrganisationContextDep, assert_product_in_context
 from app.models.category import RyunovaCategory
 from app.models.product import ProductCondition, RyunovaProductImage, RyunovaProductMaster
+from app.models.product_comment import RyunovaProductComment
+from app.models.user import RyunovaUser
 from app.product_sku import create_product_with_allocated_sku
 from app.schemas.product import (
+    ProductCommentCreate,
+    ProductCommentRead,
     ProductCreate,
     ProductImageFromUrlCreate,
     ProductImageRead,
@@ -24,7 +28,10 @@ from app.schemas.product import (
     ProductListPage,
     ProductRead,
     ProductUpdate,
+    ScrapePreviewRequest,
+    ScrapePreviewResponse,
 )
+from app.services.listing_scrape import scrape_ebay, scrape_shopify
 from app.taxonomy_display import product_audit_labels
 from app.media_urls import public_media_url
 from app.utils.image_url_import import build_stored_filename, download_image_bytes
@@ -82,7 +89,26 @@ def _ordered_product_images(p: RyunovaProductMaster) -> list[RyunovaProductImage
     )
 
 
-def _product_to_read(p: RyunovaProductMaster) -> ProductRead:
+def _author_display_name(u: RyunovaUser | None) -> str:
+    if not u:
+        return "User"
+    if u.display_name and str(u.display_name).strip():
+        return str(u.display_name).strip()
+    return u.email.split("@")[0]
+
+
+def _comment_counts_for_products(db: Session, product_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    if not product_ids:
+        return {}
+    stmt = (
+        select(RyunovaProductComment.product_id, func.count())
+        .where(RyunovaProductComment.product_id.in_(product_ids))
+        .group_by(RyunovaProductComment.product_id)
+    )
+    return {pid: int(n) for pid, n in db.execute(stmt).all()}
+
+
+def _product_to_read(p: RyunovaProductMaster, *, comment_count: int = 0) -> ProductRead:
     images_out: list[ProductImageRead] = []
     for img in _ordered_product_images(p):
         pr = ProductImageRead.model_validate(img)
@@ -93,6 +119,7 @@ def _product_to_read(p: RyunovaProductMaster) -> ProductRead:
         update={
             "images": images_out,
             "brand_name": brand_name,
+            "comment_count": comment_count,
             **product_audit_labels(p),
         }
     )
@@ -187,13 +214,100 @@ def list_products(
     if conditions:
         stmt = stmt.where(*conditions)
     rows = db.scalars(stmt).unique().all()
-    items = [_product_to_read(p) for p in rows]
+    ids = [p.id for p in rows]
+    counts = _comment_counts_for_products(db, ids)
+    items = [_product_to_read(p, comment_count=counts.get(p.id, 0)) for p in rows]
     return ProductListPage(
         items=items,
         total=total,
         page=page,
         page_size=page_size,
         total_pages=total_pages,
+    )
+
+
+@router.post("/scrape-preview", response_model=ScrapePreviewResponse)
+def scrape_preview(
+    body: ScrapePreviewRequest,
+    ctx: OrganisationContextDep,
+) -> ScrapePreviewResponse:
+    ctx.require_organisation_id()
+    url = str(body.url)
+    try:
+        if body.source == "shopify":
+            raw = scrape_shopify(url)
+        else:
+            raw = scrape_ebay(url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Scrape failed: {e!s}") from e
+    return ScrapePreviewResponse(**raw)
+
+
+@router.get("/{product_id}/comments", response_model=list[ProductCommentRead])
+def list_product_comments(
+    product_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    ctx: OrganisationContextDep,
+) -> list[ProductCommentRead]:
+    p = db.scalar(select(RyunovaProductMaster).where(RyunovaProductMaster.id == product_id))
+    if not p:
+        raise HTTPException(status_code=404, detail="Product not found")
+    assert_product_in_context(db, ctx, p.organisation_id)
+    stmt = (
+        select(RyunovaProductComment, RyunovaUser)
+        .join(RyunovaUser, RyunovaProductComment.user_id == RyunovaUser.id)
+        .where(RyunovaProductComment.product_id == product_id)
+        .order_by(RyunovaProductComment.created_at.desc())
+    )
+    out: list[ProductCommentRead] = []
+    for row in db.execute(stmt).all():
+        c, u = row
+        out.append(
+            ProductCommentRead(
+                id=c.id,
+                product_id=c.product_id,
+                body=c.body,
+                created_at=c.created_at,
+                author_display_name=_author_display_name(u),
+            )
+        )
+    return out
+
+
+@router.post(
+    "/{product_id}/comments",
+    response_model=ProductCommentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_product_comment(
+    product_id: uuid.UUID,
+    body: ProductCommentCreate,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+    ctx: OrganisationContextDep,
+) -> ProductCommentRead:
+    p = db.scalar(select(RyunovaProductMaster).where(RyunovaProductMaster.id == product_id))
+    if not p:
+        raise HTTPException(status_code=404, detail="Product not found")
+    assert_product_in_context(db, ctx, p.organisation_id)
+    c = RyunovaProductComment(
+        product_id=product_id,
+        organisation_id=p.organisation_id,
+        user_id=user.id,
+        body=body.body,
+    )
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    u = db.get(RyunovaUser, user.id)
+    return ProductCommentRead(
+        id=c.id,
+        product_id=c.product_id,
+        body=c.body,
+        created_at=c.created_at,
+        author_display_name=_author_display_name(u),
     )
 
 
@@ -211,7 +325,8 @@ def get_product(
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
     assert_product_in_context(db, ctx, p.organisation_id)
-    return _product_to_read(p)
+    counts = _comment_counts_for_products(db, [product_id])
+    return _product_to_read(p, comment_count=counts.get(product_id, 0))
 
 
 @router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
@@ -261,7 +376,8 @@ def create_product(
         .where(RyunovaProductMaster.id == p.id)
     )
     assert p
-    return _product_to_read(p)
+    counts = _comment_counts_for_products(db, [p.id])
+    return _product_to_read(p, comment_count=counts.get(p.id, 0))
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
@@ -299,7 +415,8 @@ def update_product(
         .where(RyunovaProductMaster.id == product_id)
     )
     assert p
-    return _product_to_read(p)
+    counts = _comment_counts_for_products(db, [product_id])
+    return _product_to_read(p, comment_count=counts.get(product_id, 0))
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)

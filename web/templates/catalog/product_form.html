@@ -3,14 +3,28 @@
 {% block title %}{{ title }} — RyuNova Platform{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'taxonomy.css' %}">
+<link rel="stylesheet" href="{% static 'product-toolbar.css' %}">
 {% endblock %}
 {% block content %}
-<div class="toolbar">
+<div class="toolbar product-toolbar">
   <h1 class="page-title">{{ title }}</h1>
-  <a href="{% url 'product_list' %}" class="btn btn--secondary">Back to list</a>
+  <div class="product-toolbar__actions">
+    <a href="{% url 'product_list' %}" class="btn btn--secondary">Back to list</a>
+    {% if product and product.id %}
+    <button type="button" class="btn product-comments-btn{% if product.comment_count|default:0 %} product-comments-btn--has{% endif %}" id="product-open-comments" data-comments-url="{% url 'product_comments_api' product.id %}" data-product-id="{{ product.id }}">
+      Comments{% if product.comment_count|default:0 %} <span class="product-comments-count">{{ product.comment_count }}</span>{% endif %}
+    </button>
+    {% endif %}
+    {% if is_add_product %}
+    <button type="button" class="btn btn--secondary" id="product-open-scrape-shopify" data-scrape-source="shopify">Import from Shopify</button>
+    <button type="button" class="btn btn--secondary" id="product-open-scrape-ebay" data-scrape-source="ebay">Import from eBay</button>
+    {% endif %}
+  </div>
 </div>
 <form id="product-master-form" method="post" enctype="multipart/form-data" class="form form--grid form--product surface surface--form">
   {% csrf_token %}
+  <input type="hidden" name="import_attributes_json" id="product-import-attributes" value="">
+  <span id="product-scrape-endpoint" data-url="{% url 'product_scrape_preview' %}" hidden></span>
   <div class="product-form-top{% if product and product.images %} product-form-top--split{% endif %}">
     <div class="product-form-top__main">
       <div class="form-grid product-form-top__fields">
@@ -283,8 +297,64 @@
     <div class="taxonomy-detail-row"><dt>Last modified</dt><dd class="taxonomy-detail-dd">{{ product.updated_at|default:"—"|slice:":19" }}</dd></div>
     <div class="taxonomy-detail-row"><dt>Added by</dt><dd class="taxonomy-detail-dd">{{ product.created_by_label|default:"—" }}</dd></div>
     <div class="taxonomy-detail-row"><dt>Last updated by</dt><dd class="taxonomy-detail-dd">{{ product.updated_by_label|default:"—" }}</dd></div>
+    {% if product.attributes %}
+    {% if product.attributes.data_origin %}
+    <div class="taxonomy-detail-row"><dt>Data origin</dt><dd class="taxonomy-detail-dd">{{ product.attributes.data_origin }}{% if product.attributes.import_source_url %} · <a href="{{ product.attributes.import_source_url }}" target="_blank" rel="noopener noreferrer">source page</a>{% endif %}</dd></div>
+    {% endif %}
+    {% endif %}
   </dl>
 </section>
+{% endif %}
+
+<div class="drawer-overlay" id="product-comments-overlay" hidden aria-hidden="true"></div>
+<div class="drawer-panel drawer-panel--wide" id="product-comments-drawer" hidden role="dialog" aria-labelledby="product-comments-drawer-title">
+  <div class="drawer-panel__head">
+    <h2 id="product-comments-drawer-title" class="drawer-panel__title">Product comments</h2>
+    <button type="button" class="drawer-panel__close" id="product-comments-close">Close</button>
+  </div>
+  <div class="drawer-panel__body">
+    <ul class="product-comments-list" id="product-comments-list"></ul>
+    <button type="button" class="btn btn--primary" id="product-comments-open-add">Add comment</button>
+    <div class="product-comments-add-wrap" id="product-comments-add-wrap" hidden>
+      <form id="product-comments-form">
+        <label class="field field--full">
+          <span class="field__label">Comment</span>
+          <textarea id="product-comments-body-input" class="input input--textarea" rows="4" maxlength="8000" required placeholder="Write a comment…"></textarea>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Save comment</button>
+          <button type="button" class="btn btn--secondary" id="product-comments-cancel-add">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if is_add_product %}
+<div class="drawer-overlay" id="product-scrape-overlay" hidden aria-hidden="true"></div>
+<div class="drawer-panel drawer-panel--wide" id="product-scrape-drawer" hidden role="dialog" aria-labelledby="product-scrape-drawer-title">
+  <div class="drawer-panel__head">
+    <h2 id="product-scrape-drawer-title" class="drawer-panel__title">Import listing</h2>
+    <button type="button" class="drawer-panel__close" id="product-scrape-close">Close</button>
+  </div>
+  <div class="drawer-panel__body">
+    <p class="field__hint">Paste the public product page URL. We fetch the page server-side and prefill the form.</p>
+    <form id="product-scrape-form">
+      <label class="field field--full">
+        <span class="field__label">Page URL</span>
+        <input type="url" id="product-scrape-url-input" class="input" required placeholder="https://…" autocomplete="off">
+      </label>
+      <p class="field__hint" id="product-scrape-error" style="color:var(--danger);"></p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Scrape</button>
+      </div>
+    </form>
+    <div class="product-scrape-loader" id="product-scrape-loader" hidden>
+      <div class="product-scrape-spinner" aria-hidden="true"></div>
+      <span>Fetching listing…</span>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 {% block extra_js %}
@@ -293,4 +363,10 @@
 <script src="{% static 'product-taxonomy-quickadd.js' %}"></script>
 <script src="{% static 'product-media-picker.js' %}"></script>
 <script src="{% static 'product-form-guard.js' %}"></script>
+{% if product and product.id %}
+<script src="{% static 'product-comments.js' %}"></script>
+{% endif %}
+{% if is_add_product %}
+<script src="{% static 'product-scrape.js' %}"></script>
+{% endif %}
 {% endblock %}

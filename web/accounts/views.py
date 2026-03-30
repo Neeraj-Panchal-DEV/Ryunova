@@ -30,12 +30,9 @@ from ryunova_web.api_client import (
     verify_email,
 )
 from ryunova_web.context_processors import refresh_session_nav_user
-from ryunova_web.workspace import needs_workspace_selection
+from ryunova_web.workspace import SESSION_KEY_ORG_USERS_LIST, needs_workspace_selection
 
 logger = logging.getLogger(__name__)
-
-# Organisation whose members list / admin profile edit applies to (clean URLs; no ?organisation_id= in the bar).
-SESSION_KEY_ORG_USERS_LIST = "organisation_users_list_org_id"
 
 
 def _err_msg(e: ApiError) -> str:
@@ -305,6 +302,12 @@ def select_organisation_view(request):
             return redirect("dashboard")
 
     if request.method == "POST":
+        # Single-org members never use the picker; ignore forged POSTs.
+        if not is_plat and len(orgs) == 1:
+            request.session["organisation_id"] = str(orgs[0]["id"])
+            request.session["workspace_scope_confirmed"] = True
+            request.session.modified = True
+            return redirect("dashboard")
         choice = (request.POST.get("organisation_id") or "").strip()
         if is_plat and choice == "__all__":
             request.session.pop("organisation_id", None)

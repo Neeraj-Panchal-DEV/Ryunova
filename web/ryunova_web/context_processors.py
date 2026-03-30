@@ -150,11 +150,13 @@ def workspace_context(request):
     else:
         footer_brand_name = "RYUNOVA PLATFORM"
 
-    show_link = token and (is_plat or len(orgs) > 1)
+    multi_org = len(orgs) > 1
+    show_link = token and (is_plat or multi_org)
 
-    # User menu (avatar dropdown): org context + “Change organisation” before Sign out
+    # User menu (avatar dropdown): org line + “Change organisation” only when switching is meaningful
+    # (platform, or member of multiple orgs). Single-org members see no org block here.
     workspace_menu_org_line = None
-    if token:
+    if token and show_link:
         if is_plat and not oid:
             workspace_menu_org_line = "All organisations"
         elif org_display_name:

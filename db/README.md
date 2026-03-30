@@ -13,6 +13,18 @@ psql -U ryunova -d ryunova -f db/mvp1_schema.sql
 - **`patch_public_code_10_alnum.sql`** — notes only (10-char codes; optional **`backend/scripts/backfill_public_codes.py`**).
 - **`patch_multi_tenant.sql`** — **legacy** (old **public**-schema upgrades); do not use on a greenfield **`ryunova`** database.
 
+### Legacy: `ryunova_*` tables in `public` (not `ryunova`)
+
+The application expects **`ryunova.ryunova_*`** (see `backend/app/database.py`). If your database was created before the canonical **`ryunova`** schema layout, data may live as **`public.ryunova_users`**, etc., which produces errors like `relation "ryunova.ryunova_users" does not exist` even though a similarly named table exists under **`public`**.
+
+**One-time fix:** run **`db/move_public_tables_to_ryunova_schema.sql`** (do **not** add it to **`order.txt`**). It moves **`public.ryunova_*`** tables (and the product condition enum, if needed) into schema **`ryunova`**. Take a backup first.
+
+```bash
+psql -U ryunova -d ryunova -v ON_ERROR_STOP=1 -f db/move_public_tables_to_ryunova_schema.sql
+```
+
+If both **`public.ryunova_users`** and **`ryunova.ryunova_users`** exist, resolve the duplicate manually before running the script.
+
 ---
 
 ## Production / EC2 (GitHub Actions)
@@ -21,7 +33,7 @@ Deploy (`.github/workflows/deploy-prod.yml`) runs **`scripts/run_ryunova_migrati
 
 1. Creates the target database **if it does not exist** (admin must be allowed to `CREATE DATABASE`, or create the DB manually).
 2. Ensures the **app role** from `PROD_POSTGRES_APPL_*` exists and sets password.
-3. Applies SQL files listed in **`db/migrations/order.txt`** in order (typically **`mvp1_schema.sql`** only), skipping any filename already recorded in **`ryunova.ryunova_schema_migrations`**.
+3. Applies SQL files listed in **`db/migrations/order.txt`** in order (e.g. **`mvp1_schema.sql`**, then incremental files such as **`002_product_comments.sql`**), skipping any filename already recorded in **`ryunova.ryunova_schema_migrations`**.
 4. Grants DML on **`ryunova.ryunova_*`** app tables (not **`ryunova.ryunova_schema_migrations`**) to the app role.
 
 FinText continues to use schema **`fintext`** in the same **`latrobe_apps_db`** when shared.

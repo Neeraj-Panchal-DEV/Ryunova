@@ -20,9 +20,14 @@
 - **Non–platform users** with **more than one** organisation → **Choose organisation** before the dashboard/catalog (same picker).
 - **Non–platform users** with exactly one organisation skip the picker; `organisation_id` is set at login.
 - Platform users working in **All organisations** keep `organisation_id` unset; they can scope one org from the switcher anytime.
-- **Header**: **Platform** users see **RyuNova Platform** next to the logo; **non–platform** users see their **organisation name** (org chip is hidden when they only have one org to avoid duplication; multi-org shows a **Switch organisation** chip with the current org name in the tooltip).
-- **Menus**: under the profile avatar → **Profile**, **Users** submenu (platform: **Organisation users**, **Invite user (any organisation)**, **New organisation**; org user-admin: **Invite team member**; platform + org admin see both groups), **Sign out**.
+- **Header / branding**: scoped **organisation name** appears in the logo area when an org is selected; platform “all orgs” mode uses the generic product title until an org is scoped.
+- **Account menu**: **Profile**, **Change password**, optional **Users** submenu (platform + user-admin features), optional **organisation** block (**Change organisation** only when switching is meaningful — platform users or members of **more than one** org). **Single-org members** do not see **Change organisation** or a separate org line in the menu; visiting `/accounts/select-organisation/` redirects to the dashboard.
+- **Session security:** each request runs **workspace reconciliation** so `organisation_id` and the org-users admin scope stay within the user’s **login-time organisation list** (see **[SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md)**).
 - Catalog API calls send `X-Organisation-Id` when `organisation_id` is set in session.
+
+## Security (summary)
+
+Authorisation is enforced in **FastAPI** (JWT + membership + role checks). Django adds **session reconciliation** and UI rules so workspace scope cannot drift from allowed organisations. Full detail: **[SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md)**.
 
 ## API (FastAPI)
 
