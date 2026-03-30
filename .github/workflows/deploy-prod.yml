@@ -19,8 +19,10 @@
 #   PROD_MEDIA_PUBLIC_BASE_URL — override S3 virtual-host URL (e.g. CloudFront)
 #   PROD_DB_HOST, PROD_DB_PORT, PROD_POSTGRES_DB_NAME, PROD_EMAIL_* (or EMAIL_* fallbacks — same values as FinText), ECR + AWS keys (see docs/DEPLOYMENT_EC2_ALB.md).
 #   Optional PROD_USE_S3_MEDIA=true — store orgs/ + users/ media in S3 (IAM role on EC2 required).
+#   DEPLOY_NOTIFY_WEBHOOK_URL — optional; on success, POST JSON {"text":"..."} (Slack-compatible) when deploy finishes OK.
 # ECR: one repository (default prod/ryunova-channels); images are tagged api-<sha> and web-<sha>. Optional PROD_ECR_REPOSITORY overrides the repo name.
-# DB: deploy runs scripts/run_ryunova_migrations.sh on EC2 — creates DB if allowed, ensures app role, applies db/migrations/order.txt (see db/README.md).
+# DB: PostgreSQL schema is **not** applied by this workflow (existing prod DBs are already migrated).
+# New server / greenfield: run **db/mvp1_schema.sql** or **scripts/run_ryunova_migrations.sh** manually (see db/README.md).
 #
 # Django (web): web/Dockerfile runs `manage.py migrate` at container start. The workflow also runs migrate via
 #   `docker compose exec web` after compose up so django_session exists even when an older image omits migrate in CMD.
@@ -41,19 +43,20 @@ on:
         required: true
         default: "prod"
 
-env:
-  EC2_HOST: ${{ secrets.PROD_EC2_HOST || secrets.EC2_HOST_PROD }}
-  EC2_USER: ${{ secrets.PROD_EC2_USER }}
-  DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || 'prod' }}
-  # secrets are not allowed in step `if:` — expose a string flag here instead
-  DO_ECR_PUSH: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
-
 jobs:
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # secrets are not available in workflow-level `env` (breaks workflow_dispatch parse); use job env.
+    env:
+      EC2_HOST: ${{ secrets.PROD_EC2_HOST || secrets.EC2_HOST_PROD }}
+      EC2_USER: ${{ secrets.PROD_EC2_USER }}
+      DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || 'prod' }}
+      # secrets are not allowed in step `if:` — expose a string flag here instead
+      DO_ECR_PUSH: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+      DEPLOY_NOTIFY_WEBHOOK_URL: ${{ secrets.DEPLOY_NOTIFY_WEBHOOK_URL }}
 
     steps:
       - name: Checkout code
@@ -137,18 +140,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Clone or update repo on EC2 and run DB migrations
+      - name: Clone or update repo on EC2
         env:
           DEPLOY_BRANCH: ${{ env.DEPLOY_BRANCH }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          DB_HOST_VAL: ${{ secrets.PROD_DB_HOST || secrets.PROD_EC2_HOST || secrets.EC2_HOST_PROD }}
-          DB_PORT_VAL: ${{ secrets.PROD_DB_PORT || '5432' }}
-          DB_NAME_VAL: ${{ secrets.PROD_POSTGRES_DB_NAME || secrets.PROD_DB_NAME || 'latrobe_apps_db' }}
-          ADMIN_USER: ${{ secrets.PROD_POSTGRES_ADMIN_USER }}
-          ADMIN_PW: ${{ secrets.PROD_POSTGRES_ADMIN_PASSWORD }}
-          APPL_USER: ${{ secrets.PROD_POSTGRES_APPL_USER }}
-          APPL_PW: ${{ secrets.PROD_POSTGRES_APPL_PASSWORD }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ env.EC2_USER }}@${{ env.EC2_HOST }} bash -s << REMOTE_SCRIPT
@@ -165,18 +161,7 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin
           git reset --hard "origin/${DEPLOY_BRANCH}"
-
-          echo "--- RyuNova: DB bootstrap + SQL migrations (see db/migrations/order.txt) ---"
-          export ADMIN_USER="${ADMIN_USER}"
-          export ADMIN_PW="${ADMIN_PW}"
-          export APPL_USER="${APPL_USER}"
-          export APPL_PW="${APPL_PW}"
-          export DB_HOST="${DB_HOST_VAL}"
-          export DB_PORT="${DB_PORT_VAL}"
-          export DB_NAME="${DB_NAME_VAL}"
-          export REPO_DIR="\$APP_DIR"
-          chmod +x "\$APP_DIR/scripts/run_ryunova_migrations.sh"
-          bash "\$APP_DIR/scripts/run_ryunova_migrations.sh"
+          echo "--- RyuNova repo ready at \$APP_DIR (commit \$(git rev-parse --short HEAD)) ---"
           REMOTE_SCRIPT
 
       - name: Generate .env and upload
@@ -276,6 +261,40 @@ jobs:
             exit 1' || true)
           CODE=$(echo "$CODE" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
           if [ "$CODE" = "200" ]; then echo "✅ API /health OK"; else echo "❌ API HTTP $CODE (after ~80s of retries; check docker logs ryunova_api on EC2)"; exit 1; fi
+
+      - name: Deployment summary (check Actions run page)
+        if: always()
+        env:
+          STATUS: ${{ job.status }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "## RyuNova production deploy"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **Result** | **$STATUS** |"
+            echo "| Branch | \`${{ env.DEPLOY_BRANCH }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Trigger | ${{ github.event_name }} |"
+            echo "| By | @${{ github.actor }} |"
+            echo "| Full log | [Workflow run #${{ github.run_number }}]($RUN_URL) |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$STATUS" = "success" ]; then
+            echo "✅ Deploy finished successfully — open the workflow run above for details."
+          else
+            echo "❌ Deploy did not complete successfully — see failed step logs in the workflow run."
+          fi
+
+      - name: Optional webhook (Slack / etc.)
+        if: success() && env.DEPLOY_NOTIFY_WEBHOOK_URL != ''
+        env:
+          WEBHOOK: ${{ env.DEPLOY_NOTIFY_WEBHOOK_URL }}
+        run: |
+          MSG="✅ RyuNova deploy OK: ${{ env.DEPLOY_BRANCH }} @ ${{ github.sha }} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sfS -X POST "$WEBHOOK" -H 'Content-Type: application/json' \
+            --data-binary "$(printf '%s' "$MSG" | jq -Rs '{text: .}')"
 
       - name: Cleanup
         if: always()
