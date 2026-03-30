@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import urlencode
 
+from django.conf import settings as django_settings
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -30,6 +31,7 @@ from ryunova_web.api_client import (
     verify_email,
 )
 from ryunova_web.context_processors import refresh_session_nav_user
+from ryunova_web.currency_choices import CURRENCY_CHOICES, normalize_currency_code
 from ryunova_web.workspace import SESSION_KEY_ORG_USERS_LIST, needs_workspace_selection
 
 logger = logging.getLogger(__name__)
@@ -1066,4 +1068,77 @@ def user_profile_edit_view(request, user_id):
         phone_national=nat,
         form_new_email_request="",
         profile_list_organisation_id=ui_org,
+    )
+
+
+def _organisation_settings_patch_body(request) -> dict:
+    def opt(key: str) -> str | None:
+        v = (request.POST.get(key) or "").strip()
+        return v or None
+
+    country = (request.POST.get("address_country") or "").strip().upper()
+    if country and len(country) > 2:
+        country = country[:2]
+    return {
+        "currency_code": normalize_currency_code(request.POST.get("currency_code")),
+        "website_url": opt("website_url"),
+        "address_line1": opt("address_line1"),
+        "address_line2": opt("address_line2"),
+        "address_locality": opt("address_locality"),
+        "address_region": opt("address_region"),
+        "address_postal_code": opt("address_postal_code"),
+        "address_country": country or None,
+        "address_place_id": opt("address_place_id"),
+        "tax_identifier": opt("tax_identifier"),
+        "key_contact_name": opt("key_contact_name"),
+        "key_contact_email": opt("key_contact_email"),
+        "key_contact_phone": opt("key_contact_phone"),
+    }
+
+
+@require_http_methods(["GET", "POST"])
+def organisation_settings_view(request):
+    """Organisation profile: currency, website, address, tax ID, key contact (read for members; edit for platform or org admin)."""
+    if red := _require_api_token(request):
+        return red
+    if needs_workspace_selection(request):
+        return redirect(reverse("select_organisation"))
+    oid = request.session.get("organisation_id")
+    if not oid:
+        messages.error(request, "Select an organisation to open organisation settings.")
+        return redirect(reverse("select_organisation"))
+    token = request.session["access_token"]
+    can_edit = bool(request.session.get("is_platform_user") or request.session.get("user_admin_access"))
+    places_key = getattr(django_settings, "GOOGLE_PLACES_API_KEY", "") or ""
+    places_enabled = bool(getattr(django_settings, "GOOGLE_PLACES_ENABLED", False)) and bool(places_key)
+
+    if request.method == "POST" and can_edit:
+        try:
+            api_patch_json(
+                f"/organisations/{oid}",
+                token,
+                _organisation_settings_patch_body(request),
+                organisation_id=str(oid),
+            )
+            messages.success(request, "Organisation settings saved.")
+            return redirect(reverse("organisation_settings"))
+        except ApiError as e:
+            messages.error(request, _err_msg(e))
+
+    try:
+        organisation = api_get(f"/organisations/{oid}", token, organisation_id=str(oid))
+    except ApiError as e:
+        messages.error(request, _err_msg(e))
+        organisation = None
+
+    return render(
+        request,
+        "accounts/organisation_settings.html",
+        {
+            "organisation": organisation,
+            "can_edit": can_edit,
+            "currency_choices": CURRENCY_CHOICES,
+            "google_places_api_key": places_key if places_enabled else "",
+            "google_places_enabled": places_enabled,
+        },
     )

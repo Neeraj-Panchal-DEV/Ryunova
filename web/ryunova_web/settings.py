@@ -145,6 +145,11 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # Optional logo in HTML emails (same idea as Fintext logo_url)
 EMAIL_LOGO_URL = os.getenv("EMAIL_LOGO_URL", "").strip()
 
+# Google Maps Places (address autocomplete on organisation settings). Optional; leave empty to type address manually.
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "").strip()
+# Temporarily off by default; set GOOGLE_PLACES_ENABLED=true when Places should load (requires API key above).
+GOOGLE_PLACES_ENABLED = os.getenv("GOOGLE_PLACES_ENABLED", "false").lower() in ("1", "true", "yes")
+
 _email_smtp_ready = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",

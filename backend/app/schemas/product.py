@@ -61,6 +61,7 @@ class ProductCore(BaseModel):
     status: str = Field(default="active", max_length=32)
     listing_readiness: ListingReadiness = "draft"
     active: bool = True
+    currency_code: str = Field(default="AUD", min_length=3, max_length=3)
 
     @field_validator("colour", mode="before")
     @classmethod
@@ -69,6 +70,12 @@ class ProductCore(BaseModel):
             return None
         s = str(v).strip()
         return s or None
+
+    @field_validator("currency_code", mode="before")
+    @classmethod
+    def _currency_upper(cls, v: object) -> str:
+        s = str(v or "AUD").strip().upper()
+        return s if len(s) == 3 else "AUD"
 
 
 class ProductBase(ProductCore):
@@ -101,6 +108,7 @@ class ProductUpdate(BaseModel):
     status: str | None = Field(None, max_length=32)
     listing_readiness: ListingReadiness | None = None
     active: bool | None = None
+    currency_code: str | None = Field(None, min_length=3, max_length=3)
 
     @field_validator("colour", mode="before")
     @classmethod
@@ -109,6 +117,14 @@ class ProductUpdate(BaseModel):
             return None
         s = str(v).strip()
         return s or None
+
+    @field_validator("currency_code", mode="before")
+    @classmethod
+    def _currency_upper_upd(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v).strip().upper()
+        return s if len(s) == 3 else None
 
 
 class ProductRead(ProductBase):

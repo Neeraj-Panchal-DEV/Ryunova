@@ -1,172 +1,184 @@
 {% extends "base.html" %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'product-toolbar.css' %}">
+{% endblock %}
 {% block title %}Products — RyuNova Platform{% endblock %}
 {% block content %}
 <div class="toolbar">
   <h1 class="page-title">Products</h1>
   <a href="{% url 'product_create' %}" class="btn btn--primary">Add product</a>
 </div>
-<form method="get" class="filter-bar surface surface--filter">
-  <input type="search" name="q" value="{{ q }}" placeholder="Search by title" class="input input--search input--filter-control" aria-label="Search by title">
+<form method="get" class="filter-bar surface surface--filter filter-bar--compact">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search title / SKU" class="input input--search input--filter-control" aria-label="Search by title or SKU">
   <select name="status" class="input input--select input--filter-control input--filter-status" aria-label="Status">
     <option value="" {% if not status_filter %}selected{% endif %}>Status</option>
-    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active only</option>
-    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft only</option>
-    <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived only</option>
+    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+    <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
   </select>
   <select name="listing_readiness" class="input input--select input--filter-control input--filter-listing-readiness" aria-label="Listing readiness">
-    <option value="" {% if not listing_readiness_filter %}selected{% endif %}>Listing readiness</option>
+    <option value="" {% if not listing_readiness_filter %}selected{% endif %}>Listing</option>
     <option value="draft" {% if listing_readiness_filter == 'draft' %}selected{% endif %}>Draft listing</option>
-    <option value="ready_to_post" {% if listing_readiness_filter == 'ready_to_post' %}selected{% endif %}>Ready to post</option>
+    <option value="ready_to_post" {% if listing_readiness_filter == 'ready_to_post' %}selected{% endif %}>Ready</option>
   </select>
-  <label class="checkbox-label checkbox-label--filter">
+  <label class="checkbox-label checkbox-label--filter checkbox-label--compact">
     <input type="checkbox" name="include_inactive" value="on" {% if include_inactive %}checked{% endif %}>
-    Include disabled
+    Disabled
   </label>
   <select name="page_size" class="input input--select input--filter-control input--filter-rows" aria-label="Rows per page">
     {% for n in page_sizes %}
-    <option value="{{ n }}" {% if pagination.page_size == n %}selected{% endif %}>{{ n }} rows per page</option>
+    <option value="{{ n }}" {% if pagination.page_size == n %}selected{% endif %}>{{ n }}/page</option>
     {% endfor %}
   </select>
-  <button type="submit" class="btn btn--secondary">Apply filters</button>
+  <button type="submit" class="btn btn--secondary btn--small">Apply</button>
 </form>
+
 {% if pagination.total > 0 %}
-<form id="bulk-listings-form" method="post" action="{% url 'product_bulk_listings' %}" class="bulk-listings-bar surface surface--filter">
+<form id="bulk-listings-form" method="post" action="{% url 'product_bulk_listings' %}" class="bulk-toolbar">
   {% csrf_token %}
   <input type="hidden" name="return_qs" value="{{ preserve_qs }}">
   {% if include_inactive %}<input type="hidden" name="include_inactive" value="on">{% endif %}
-  <label class="bulk-listings-bar__select-all checkbox-label checkbox-label--filter">
-    <input type="checkbox" id="bulk-select-all" aria-label="Select all products on this page">
-    Select all on page
-  </label>
-  <label class="bulk-listings-bar__action-label" for="bulk-action-select">Bulk action</label>
-  <select name="bulk_action" id="bulk-action-select" class="input input--select input--filter-control bulk-listings-bar__action" aria-label="Bulk action">
-    <option value="">Choose action…</option>
-    <optgroup label="Listing readiness">
-      <option value="bulk_ready">Mark selected — ready to post</option>
-      <option value="bulk_draft">Move selected — draft (clears marketplace flags)</option>
-    </optgroup>
-    {% if bulk_marketplaces %}
-    <optgroup label="Marketplaces (applies to ready products only)">
-      {% for ch in bulk_marketplaces %}
-      <option value="bulk_marketplace:{{ ch.id }}">Enable — {{ ch.name }}</option>
-      <option value="bulk_marketplace_off:{{ ch.id }}">Disable — {{ ch.name }}</option>
-      {% endfor %}
-    </optgroup>
-    {% endif %}
-  </select>
-  <button type="submit" class="btn btn--secondary">Apply to selected</button>
+  <div class="bulk-toolbar__panel" id="bulk-toolbar-panel" aria-live="polite">
+    <div class="bulk-toolbar__row">
+      <span class="bulk-toolbar__status" id="bulk-selected-count">0 selected</span>
+      <div class="bulk-toolbar__actions-wrap" id="bulk-toolbar-actions" hidden>
+        <label class="bulk-toolbar__select-all">
+          <input type="checkbox" id="bulk-select-all" aria-label="Select all on this page">
+          <span class="visually-hidden">Select all on this page</span>
+        </label>
+        <button type="button" class="bulk-toolbar__clear" id="bulk-clear-selection">Clear</button>
+        <span class="bulk-toolbar__sep" aria-hidden="true"></span>
+        <span class="bulk-toolbar__group-label">Listing</span>
+        <button type="submit" name="bulk_action" value="bulk_ready" class="bulk-tag bulk-tag--go" title="Mark selected as ready to post">Ready</button>
+        <button type="submit" name="bulk_action" value="bulk_draft" class="bulk-tag bulk-tag--warn" title="Move selected to draft (clears marketplace flags)">Draft</button>
+        {% if bulk_marketplaces %}
+        <span class="bulk-toolbar__sep" aria-hidden="true"></span>
+        <span class="bulk-toolbar__group-label">Marketplaces</span>
+        <div class="bulk-toolbar__mp-grid" role="group" aria-label="Marketplace flags for selection">
+          {% for ch in bulk_marketplaces %}
+          <div class="bulk-mp" data-marketplace-name="{{ ch.name }}">
+            <span class="bulk-mp__code" title="{{ ch.name }}">{{ ch.code|slice:":4" }}</span>
+            <button type="submit" name="bulk_action" value="bulk_marketplace:{{ ch.id }}" class="bulk-mp__toggle bulk-mp__toggle--on" title="Enable {{ ch.name }} on ready products">On</button>
+            <button type="submit" name="bulk_action" value="bulk_marketplace_off:{{ ch.id }}" class="bulk-mp__toggle bulk-mp__toggle--off" title="Disable {{ ch.name }}">Off</button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </form>
 {% endif %}
-<div class="table-wrap">
-  <table class="table table--product-list" aria-label="Products">
-    <caption class="visually-hidden">Product list: thumbnail, details, and actions per item.</caption>
-    <thead class="table--product-list__thead">
+
+<div class="table-wrap table-wrap--product-compact">
+  <table class="table table--product-list-compact" aria-label="Products">
+    <thead>
       <tr>
-        <th scope="col" class="cell-bulk-check"><span class="visually-hidden">Select</span></th>
-        <th scope="col" class="cell-thumb"><span class="visually-hidden">Thumbnail</span></th>
-        <th scope="col" class="product-list-col-main"><span class="visually-hidden">Product details</span></th>
-        <th scope="col" class="cell-actions--product"><span class="visually-hidden">Actions</span></th>
+        <th class="col-chk" scope="col"><span class="visually-hidden">Select</span></th>
+        <th class="col-list" scope="col">Listing</th>
+        <th class="col-thumb" scope="col"></th>
+        <th class="col-product" scope="col">Product</th>
+        <th class="col-money" scope="col">Price · Qty</th>
+        <th class="col-cat" scope="col">Catalog</th>
+        <th class="col-mp" scope="col">Marketplaces</th>
+        <th class="col-comment" scope="col"><span class="visually-hidden">Comments</span></th>
+        <th class="col-actions" scope="col"><span class="visually-hidden">Actions</span></th>
       </tr>
     </thead>
     <tbody>
       {% for p in products %}
-      <tr class="product-row product-row--top {% if not p.active %}row-inactive{% endif %}">
-        <td rowspan="2" class="cell-bulk-check">
-          <input type="checkbox" name="product_ids" value="{{ p.id }}" form="bulk-listings-form" class="bulk-product-check" aria-label="Select {{ p.title }}">
+      <tr class="product-row-compact {% if not p.active %}product-row-compact--inactive{% endif %}">
+        <td class="col-chk">
+          <input type="checkbox" name="product_ids" value="{{ p.id }}"{% if pagination.total > 0 %} form="bulk-listings-form"{% endif %} class="bulk-product-check" aria-label="Select {{ p.title }}">
         </td>
-        <td rowspan="2" class="cell-thumb cell-thumb--product">
+        <td class="col-list">
+          {% if p.listing_readiness == 'ready_to_post' %}
+          <span class="pill pill--ok">Ready</span>
+          {% else %}
+          <span class="pill pill--draft">Draft</span>
+          {% endif %}
+        </td>
+        <td class="col-thumb">
           {% if p.images %}
           {% with cover=p.images.0 %}
           {% if cover.media_type|default:'image' == 'video' %}
-          <video src="{{ cover.url }}" class="thumb thumb--product-list thumb--product-video" width="72" height="72" muted playsinline preload="metadata" aria-label=""></video>
+          <video src="{{ cover.url }}" class="thumb-compact thumb-compact--video" width="44" height="44" muted playsinline preload="metadata" aria-hidden="true"></video>
           {% else %}
-          <img src="{{ cover.url }}" alt="" width="72" height="72" loading="lazy" class="thumb thumb--product-list">
+          <img src="{{ cover.url }}" alt="" width="44" height="44" loading="lazy" class="thumb-compact">
           {% endif %}
           {% endwith %}
           {% else %}
-          <span class="thumb-placeholder thumb-placeholder--product">—</span>
+          <span class="thumb-compact thumb-compact--empty">—</span>
           {% endif %}
         </td>
-        <td class="product-cell product-cell--primary">
-          <div class="product-line product-line--1">
-            <span class="product-line__chunk">{{ p.brand_name|default:"—" }}</span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk product-line__chunk--title">
-              <a href="{% url 'product_edit' p.id %}" class="table-link">{{ p.title }}</a>
-              {% if include_inactive and not p.active %}
-              <span class="product-disabled-tag">Disabled</span>
-              {% endif %}
-            </span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk">{{ p.base_price }}</span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk">{{ p.quantity }}</span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk"><span class="badge">{{ p.status }}</span></span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk">
-              {% if p.listing_readiness == 'ready_to_post' %}
-              <span class="badge badge--listing-ready">Ready to list</span>
-              {% else %}
-              <span class="badge badge--listing-draft">Draft listing</span>
-              {% endif %}
-            </span>
+        <td class="col-product">
+          <div class="pcell-line1">
+            <a href="{% url 'product_edit' p.id %}" class="pcell-title">{{ p.title }}</a>
+            {% if include_inactive and not p.active %}
+            <span class="pill pill--danger">Off</span>
+            {% endif %}
+          </div>
+          <div class="pcell-line2">
+            <span class="pcell-muted">{{ p.brand_name|default:"—" }}</span>
+            <span class="pcell-dot">·</span>
+            <code class="pcell-sku">{{ p.sku }}</code>
+            <span class="pcell-dot">·</span>
+            <span class="pcell-muted">{{ p.created_at|default:"—"|slice:":10" }}</span>
           </div>
         </td>
-        {# rowspan=2: one actions cell for both product lines (thumb column matches) #}
-        <td rowspan="2" class="cell-actions--product">
-          <div class="cell-actions-product__toolbar">
-            <a href="{% url 'product_edit' p.id %}#comments" class="btn btn--small product-list-comments-btn product-comments-btn{% if p.comment_count|default:0 %} product-comments-btn--has{% endif %}" data-product-id="{{ p.id }}">Comments{% if p.comment_count|default:0 %} <span class="product-comments-count">{{ p.comment_count }}</span>{% endif %}</a>
-            <a href="{% url 'product_edit' p.id %}" class="btn btn--small">Edit</a>
-            <form method="post" action="{% url 'product_delete' p.id %}" class="inline-form" onsubmit="return confirm('Delete this product?');">
-              {% csrf_token %}
-              <button type="submit" class="btn btn--small btn--danger">Delete</button>
-            </form>
-          </div>
+        <td class="col-money">
+          <div class="pcell-line1 pcell-num">{{ p.base_price }} <span class="pcell-cur">{{ p.currency_code|default:"AUD" }}</span></div>
+          <div class="pcell-line2 pcell-muted">Qty {{ p.quantity }}</div>
         </td>
-      </tr>
-      <tr class="product-row product-row--meta {% if not p.active %}row-inactive{% endif %}">
-        <td class="product-cell product-cell--meta">
-          <div class="product-line product-line--2">
-            <span class="product-line__chunk"><span class="product-line__label">Date added</span> {{ p.created_at|default:"—"|slice:":10" }}</span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk"><span class="product-line__label">Last modified</span> {{ p.updated_at|default:"—"|slice:":10" }}</span>
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk"><span class="product-line__label">Last modified by</span> {{ p.updated_by_label|default:"—" }}</span>
-            {% if p.colour %}
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk"><span class="product-line__label">Colour</span> {{ p.colour }}</span>
-            {% endif %}
-            {% if p.length_cm or p.width_cm or p.depth_cm %}
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk"><span class="product-line__label">L×W×D (cm)</span> {{ p.length_cm|default:"—" }} × {{ p.width_cm|default:"—" }} × {{ p.depth_cm|default:"—" }}</span>
-            {% endif %}
-            {% if p.marketplace_listings %}
-            <span class="product-line__sep" aria-hidden="true">·</span>
-            <span class="product-line__chunk product-line__chunk--marketplaces" aria-label="Marketplace listings">
-              <span class="product-line__label">Marketplaces</span>
-              {% for cl in p.marketplace_listings %}
-              <span class="marketplace-chip {% if cl.enabled %}marketplace-chip--on{% else %}marketplace-chip--off{% endif %}" title="{{ cl.name }}{% if cl.last_refreshed_at %} · refreshed {{ cl.last_refreshed_at|slice:":10" }}{% endif %}">{{ cl.code }}</span>
-              {% endfor %}
-            </span>
-            {% endif %}
+        <td class="col-cat">
+          <span class="pill pill--neutral">{{ p.status }}</span>
+        </td>
+        <td class="col-mp">
+          {% if p.marketplace_listings %}
+          <div class="mp-row">
+            {% for cl in p.marketplace_listings %}
+            <span class="mp-flag {% if cl.enabled %}mp-flag--on{% else %}mp-flag--off{% endif %}" title="{{ cl.name }}{% if cl.last_refreshed_at %} · {{ cl.last_refreshed_at|slice:":10" }}{% endif %}">{{ cl.code|slice:":4" }}</span>
+            {% endfor %}
           </div>
+          {% else %}
+          <span class="pcell-muted">—</span>
+          {% endif %}
+        </td>
+        <td class="col-comment">
+          <a href="{% url 'product_edit' p.id %}#comments" class="col-comment__btn product-list-comments-btn product-comments-btn{% if p.comment_count|default:0 %} product-comments-btn--has{% endif %}" data-product-id="{{ p.id }}"{% if p.comment_count|default:0 %} aria-label="Comments, {{ p.comment_count }} unread"{% else %} aria-label="Comments"{% endif %} title="Comments">
+            <svg class="col-comment__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+            {% if p.comment_count|default:0 %}<span class="product-comments-count">{{ p.comment_count }}</span>{% endif %}
+          </a>
+        </td>
+        <td class="col-actions">
+          <details class="row-menu">
+            <summary class="row-menu__trigger" aria-label="Actions for {{ p.title }}">⋯</summary>
+            <div class="row-menu__panel" role="menu">
+              <a href="{% url 'product_edit' p.id %}" class="row-menu__item" role="menuitem">Edit</a>
+              <form method="post" action="{% url 'product_delete' p.id %}" class="row-menu__delete-form" onsubmit="return confirm('Delete this product?');">
+                {% csrf_token %}
+                <button type="submit" class="row-menu__item row-menu__item--danger" role="menuitem">Delete</button>
+              </form>
+            </div>
+          </details>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="4" class="empty">No products yet. <a href="{% url 'product_create' %}" class="table-link">Add your first product</a>.</td></tr>
+      <tr><td colspan="9" class="empty">No products yet. <a href="{% url 'product_create' %}" class="table-link">Add your first product</a>.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 {% if pagination.total > 0 %}
-<nav class="pagination" aria-label="Product pages">
-  <span class="pagination__meta">{{ pagination.total }} product{% if pagination.total != 1 %}s{% endif %} · page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+<nav class="pagination pagination--compact" aria-label="Product pages">
+  <span class="pagination__meta">{{ pagination.total }} · p.{{ pagination.page }}/{{ pagination.total_pages }}</span>
   <div class="pagination__actions">
     {% if pagination.prev_url %}
-    <a href="{{ pagination.prev_url }}" class="btn btn--small">Previous</a>
+    <a href="{{ pagination.prev_url }}" class="btn btn--small">Prev</a>
     {% else %}
-    <span class="btn btn--small btn--disabled" aria-disabled="true">Previous</span>
+    <span class="btn btn--small btn--disabled" aria-disabled="true">Prev</span>
     {% endif %}
     {% if pagination.next_url %}
     <a href="{{ pagination.next_url }}" class="btn btn--small">Next</a>
@@ -177,37 +189,63 @@
 </nav>
 <script>
 (function () {
-  var master = document.getElementById("bulk-select-all");
   var form = document.getElementById("bulk-listings-form");
-  if (!master || !form) return;
+  var panel = document.getElementById("bulk-toolbar-panel");
+  var actionsWrap = document.getElementById("bulk-toolbar-actions");
+  var master = document.getElementById("bulk-select-all");
+  var countEl = document.getElementById("bulk-selected-count");
+  var clearBtn = document.getElementById("bulk-clear-selection");
+  if (!form || !panel) return;
+
   function rowChecks() {
-    return form.querySelectorAll('input.bulk-product-check[type="checkbox"]');
+    return form.querySelectorAll("input.bulk-product-check[type=\"checkbox\"]");
   }
-  master.addEventListener("change", function () {
-    rowChecks().forEach(function (cb) { cb.checked = master.checked; });
-    master.indeterminate = false;
-  });
-  form.addEventListener("change", function (e) {
-    if (!e.target || !e.target.classList || !e.target.classList.contains("bulk-product-check")) return;
+
+  function sync() {
+    var n = 0;
+    rowChecks().forEach(function (cb) { if (cb.checked) n += 1; });
+    if (countEl) countEl.textContent = n + " selected";
+    if (actionsWrap) actionsWrap.hidden = n === 0;
+    panel.classList.toggle("bulk-toolbar__panel--active", n > 0);
     var all = true;
     var any = false;
     rowChecks().forEach(function (cb) {
       if (cb.checked) any = true;
       else all = false;
     });
-    master.indeterminate = any && !all;
-    master.checked = all && rowChecks().length > 0;
-  });
-  form.addEventListener("submit", function (e) {
-    var sel = document.getElementById("bulk-action-select");
-    if (!sel || !sel.value) {
-      e.preventDefault();
-      return;
+    if (master) {
+      master.indeterminate = any && !all;
+      master.checked = all && rowChecks().length > 0;
     }
+  }
+
+  if (master) {
+    master.addEventListener("change", function () {
+      rowChecks().forEach(function (cb) { cb.checked = master.checked; });
+      master.indeterminate = false;
+      sync();
+    });
+  }
+  form.addEventListener("change", function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains("bulk-product-check")) sync();
+  });
+  if (clearBtn) {
+    clearBtn.addEventListener("click", function () {
+      rowChecks().forEach(function (cb) { cb.checked = false; });
+      if (master) { master.checked = false; master.indeterminate = false; }
+      sync();
+    });
+  }
+  form.addEventListener("submit", function (e) {
+    var sub = e.submitter;
+    if (!sub || sub.type !== "submit") return;
     var n = 0;
     rowChecks().forEach(function (cb) { if (cb.checked) n += 1; });
-    if (n === 0) e.preventDefault();
+    if (n === 0) {
+      e.preventDefault();
+    }
   });
+  sync();
 })();
 </script>
 {% endif %}

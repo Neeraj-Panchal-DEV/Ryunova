@@ -13,7 +13,10 @@ from app.database import get_db
 from app.dependencies import CurrentUser
 from app.media_urls import public_media_url
 from app.models.organisation import RyunovaOrganisation, RyunovaUserOrganisation
+from app.models.user import RyunovaUser
+from app.org_access import user_has_org_membership
 from app.schemas.auth import OrganisationBrief
+from app.schemas.organisation import OrganisationRead, OrganisationUpdate
 
 router = APIRouter(prefix="/organisations", tags=["organisations"])
 
@@ -52,6 +55,47 @@ def _organisation_brief(o: RyunovaOrganisation) -> OrganisationBrief:
     )
 
 
+def _organisation_read(o: RyunovaOrganisation) -> OrganisationRead:
+    return OrganisationRead(
+        id=o.id,
+        name=o.name,
+        slug=o.slug,
+        description=o.description,
+        logo_url=public_media_url(o.logo_s3_key),
+        currency_code=o.currency_code or "AUD",
+        website_url=o.website_url,
+        address_line1=o.address_line1,
+        address_line2=o.address_line2,
+        address_locality=o.address_locality,
+        address_region=o.address_region,
+        address_postal_code=o.address_postal_code,
+        address_country=o.address_country,
+        address_place_id=o.address_place_id,
+        tax_identifier=o.tax_identifier,
+        key_contact_name=o.key_contact_name,
+        key_contact_email=o.key_contact_email,
+        key_contact_phone=o.key_contact_phone,
+    )
+
+
+def _can_read_org(actor: RyunovaUser, organisation_id: uuid.UUID, db: Session) -> bool:
+    org = db.get(RyunovaOrganisation, organisation_id)
+    if not org:
+        return False
+    if actor.is_platform_user:
+        return True
+    return user_has_org_membership(db, actor, organisation_id)
+
+
+def _can_edit_org_settings(actor: RyunovaUser, organisation_id: uuid.UUID, db: Session) -> bool:
+    org = db.get(RyunovaOrganisation, organisation_id)
+    if not org:
+        return False
+    if actor.is_platform_user:
+        return True
+    return bool(actor.user_admin_access and user_has_org_membership(db, actor, organisation_id))
+
+
 def _unique_slug(db: Session, base: str) -> str:
     candidate = base
     n = 2
@@ -76,6 +120,40 @@ def list_accessible_organisations(
             .order_by(RyunovaOrganisation.name)
         ).all()
     return [_organisation_brief(o) for o in rows]
+
+
+@router.get("/{organisation_id}", response_model=OrganisationRead)
+def get_organisation(
+    organisation_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+) -> OrganisationRead:
+    org = db.get(RyunovaOrganisation, organisation_id)
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+    if not _can_read_org(user, organisation_id, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to view this organisation")
+    return _organisation_read(org)
+
+
+@router.patch("/{organisation_id}", response_model=OrganisationRead)
+def patch_organisation(
+    organisation_id: uuid.UUID,
+    body: OrganisationUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+) -> OrganisationRead:
+    org = db.get(RyunovaOrganisation, organisation_id)
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+    if not _can_edit_org_settings(user, organisation_id, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to update this organisation")
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(org, k, v)
+    db.commit()
+    db.refresh(org)
+    return _organisation_read(org)
 
 
 @router.post("", response_model=OrganisationBrief, status_code=status.HTTP_201_CREATED)

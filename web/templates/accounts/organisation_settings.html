@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Organisation settings — RyuNova Platform{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1 class="page-title">Organisation settings</h1>
+  <div class="toolbar__actions">
+    <a href="{% url 'dashboard' %}" class="btn btn--secondary">Dashboard</a>
+  </div>
+</div>
+
+{% if not organisation %}
+<p class="text-muted">Organisation details could not be loaded.</p>
+{% else %}
+<p class="text-muted" style="margin-bottom:1rem;">{{ organisation.name }}</p>
+{% if not can_edit %}
+<p class="text-muted" style="margin-bottom:1rem;">You can view these details; only platform administrators or organisation admins can make changes.</p>
+{% endif %}
+
+<div class="surface surface--form org-settings">
+  <form method="post" class="form form--grid" id="org-settings-form">
+    {% csrf_token %}
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Defaults &amp; presence</legend>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Default currency</span>
+          <select name="currency_code" class="input input--select" {% if not can_edit %}disabled{% endif %} aria-label="Organisation default currency">
+            {% for code, label in currency_choices %}
+            <option value="{{ code }}" {% if organisation.currency_code|default:'AUD' == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">Website</span>
+          <input type="url" name="website_url" class="input" maxlength="512" value="{{ organisation.website_url|default:'' }}" placeholder="https://…" {% if not can_edit %}disabled{% endif %}>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Address</legend>
+      {% if google_places_enabled and can_edit %}
+      <p class="field__hint" style="margin:0 0 10px;">Start typing an address to search with Google; selecting a result fills the fields below.</p>
+      {% endif %}
+      <label class="field field--full">
+        <span class="field__label">Address line 1</span>
+        <input type="text" name="address_line1" id="org_address_line1" class="input" maxlength="255" value="{{ organisation.address_line1|default:'' }}" autocomplete="street-address" {% if not can_edit %}disabled{% endif %}>
+      </label>
+      <label class="field field--full">
+        <span class="field__label">Address line 2</span>
+        <input type="text" name="address_line2" id="org_address_line2" class="input" maxlength="255" value="{{ organisation.address_line2|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+      </label>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Suburb / city</span>
+          <input type="text" name="address_locality" id="org_address_locality" class="input" maxlength="128" value="{{ organisation.address_locality|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+        </label>
+        <label class="field">
+          <span class="field__label">State / region</span>
+          <input type="text" name="address_region" id="org_address_region" class="input" maxlength="128" value="{{ organisation.address_region|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+        </label>
+      </div>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Postal code</span>
+          <input type="text" name="address_postal_code" id="org_address_postal" class="input" maxlength="32" value="{{ organisation.address_postal_code|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+        </label>
+        <label class="field">
+          <span class="field__label">Country (ISO, e.g. AU)</span>
+          <input type="text" name="address_country" id="org_address_country" class="input" maxlength="2" value="{{ organisation.address_country|default:'' }}" placeholder="AU" {% if not can_edit %}disabled{% endif %}>
+        </label>
+      </div>
+      <input type="hidden" name="address_place_id" id="org_address_place_id" value="{{ organisation.address_place_id|default:'' }}">
+    </fieldset>
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Tax identifier</legend>
+      <label class="field field--full">
+        <span class="field__label">ABN, VAT, EIN, or other tax / company number</span>
+        <input type="text" name="tax_identifier" class="input" maxlength="64" value="{{ organisation.tax_identifier|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+      </label>
+    </fieldset>
+
+    <fieldset class="profile-section">
+      <legend class="profile-section__title">Key contact</legend>
+      <div class="profile-form__row">
+        <label class="field">
+          <span class="field__label">Name</span>
+          <input type="text" name="key_contact_name" class="input" maxlength="255" value="{{ organisation.key_contact_name|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+        </label>
+        <label class="field">
+          <span class="field__label">Email</span>
+          <input type="email" name="key_contact_email" class="input" maxlength="255" value="{{ organisation.key_contact_email|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+        </label>
+      </div>
+      <label class="field">
+        <span class="field__label">Phone</span>
+        <input type="tel" name="key_contact_phone" class="input" maxlength="64" value="{{ organisation.key_contact_phone|default:'' }}" {% if not can_edit %}disabled{% endif %}>
+      </label>
+    </fieldset>
+
+    {% if can_edit %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Save</button>
+    </div>
+    {% endif %}
+  </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if organisation and google_places_enabled and can_edit %}
+<script>
+function initOrgPlaces() {
+  function setup() {
+    if (!window.google || !google.maps || !google.maps.places) return;
+    var el = document.getElementById("org_address_line1");
+    if (!el) return;
+    var ac = new google.maps.places.Autocomplete(el, {
+      types: ["address"],
+      fields: ["address_components", "formatted_address", "place_id"],
+    });
+    function comp(place, type) {
+      var list = place.address_components || [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].types.indexOf(type) >= 0) return list[i];
+      }
+      return null;
+    }
+    ac.addListener("place_changed", function () {
+      var place = ac.getPlace();
+      if (!place || !place.address_components) return;
+      var pid = document.getElementById("org_address_place_id");
+      if (pid) pid.value = place.place_id || "";
+      var sn = comp(place, "street_number");
+      var route = comp(place, "route");
+      var line1 = "";
+      if (sn && route) line1 = sn.long_name + " " + route.long_name;
+      else if (route) line1 = route.long_name;
+      else if (place.formatted_address) line1 = place.formatted_address.split(",")[0].trim();
+      if (line1) el.value = line1;
+      var loc = comp(place, "locality") || comp(place, "sublocality") || comp(place, "postal_town");
+      var reg = comp(place, "administrative_area_level_1");
+      var pc = comp(place, "postal_code");
+      var ctry = comp(place, "country");
+      var f = function (id, val) {
+        var n = document.getElementById(id);
+        if (n && val) n.value = val;
+      };
+      f("org_address_locality", loc ? loc.long_name : "");
+      f("org_address_region", reg ? reg.long_name : "");
+      f("org_address_postal", pc ? pc.long_name : "");
+      f("org_address_country", ctry ? ctry.short_name : "");
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setup);
+  } else {
+    setup();
+  }
+}
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_places_api_key|urlencode }}&libraries=places&callback=initOrgPlaces"></script>
+{% endif %}
+{% endblock %}

@@ -6,14 +6,16 @@
 --
 --   psql -U ryunova -d ryunova -f db/mvp1_schema.sql
 --
--- Includes (formerly separate patches, now merged):
+-- Includes (formerly separate patches / migrations, now merged):
 --   • Multi-tenant orgs, user–org links, OAuth tokens, login OTP codes
 --   • Users: public_code, profile fields, social_handles, pending_email, platform flags
 --   • Email verification tokens: token_kind, new_email (email change flow)
---   • Categories, brands, products (dimensions, condition enum), product media (cover, type)
+--   • Categories, brands, products (dimensions, condition enum, listing_readiness), product media
+--   • Product comments (internal collaboration)
+--   • Listing channels / marketplace matrix (per-product flags; seed rows for Amazon, eBay, …)
 --
--- Future schema changes: add **`db/migrations/NNN_description.sql`** and append its
--- filename to **`db/migrations/order.txt`** (see **db/README.md**).
+-- New environments: run this file only (see **db/README.md**). Production deploy no longer
+-- applies SQL automatically; use **`scripts/run_ryunova_migrations.sh`** manually if needed.
 -- =============================================================================
 
 CREATE SCHEMA IF NOT EXISTS ryunova;
@@ -32,6 +34,19 @@ CREATE TABLE IF NOT EXISTS ryunova.ryunova_organisations (
   slug VARCHAR(255) NOT NULL UNIQUE,
   description TEXT,
   logo_s3_key VARCHAR(512),
+  currency_code VARCHAR(3) NOT NULL DEFAULT 'AUD',
+  website_url VARCHAR(512),
+  address_line1 VARCHAR(255),
+  address_line2 VARCHAR(255),
+  address_locality VARCHAR(128),
+  address_region VARCHAR(128),
+  address_postal_code VARCHAR(32),
+  address_country VARCHAR(2),
+  address_place_id VARCHAR(256),
+  tax_identifier VARCHAR(64),
+  key_contact_name VARCHAR(255),
+  key_contact_email VARCHAR(255),
+  key_contact_phone VARCHAR(64),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -175,16 +190,19 @@ CREATE TABLE IF NOT EXISTS ryunova.ryunova_product_master (
   width_cm NUMERIC(12, 3),
   depth_cm NUMERIC(12, 3),
   base_price NUMERIC(12,2) NOT NULL,
+  currency_code VARCHAR(3) NOT NULL DEFAULT 'AUD',
   compare_at_price NUMERIC(12,2),
   quantity INT NOT NULL DEFAULT 1,
   attributes JSONB,
   status VARCHAR(32) NOT NULL DEFAULT 'active',
+  listing_readiness VARCHAR(32) NOT NULL DEFAULT 'draft',
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by_user_id UUID REFERENCES ryunova.ryunova_users(id) ON DELETE SET NULL,
   updated_by_user_id UUID REFERENCES ryunova.ryunova_users(id) ON DELETE SET NULL,
-  UNIQUE (organisation_id, sku)
+  UNIQUE (organisation_id, sku),
+  CONSTRAINT chk_ryunova_product_listing_readiness CHECK (listing_readiness IN ('draft', 'ready_to_post'))
 );
 
 CREATE INDEX IF NOT EXISTS ix_ryunova_product_master_organisation_id ON ryunova.ryunova_product_master(organisation_id);
@@ -210,6 +228,60 @@ CREATE TABLE IF NOT EXISTS ryunova.ryunova_product_image (
 );
 
 CREATE INDEX IF NOT EXISTS ix_ryunova_product_image_product_id ON ryunova.ryunova_product_image(product_id);
+
+-- Listing channels (e-commerce / marketplaces) and per-product posting matrix
+CREATE TABLE IF NOT EXISTS ryunova.ryunova_listing_channel (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(64) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  integration_requirements JSONB NOT NULL DEFAULT '{}'::jsonb,
+  active BOOLEAN NOT NULL DEFAULT true,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_ryunova_listing_channel_code UNIQUE (code)
+);
+
+CREATE INDEX IF NOT EXISTS ix_ryunova_listing_channel_active ON ryunova.ryunova_listing_channel(active);
+CREATE INDEX IF NOT EXISTS ix_ryunova_listing_channel_sort ON ryunova.ryunova_listing_channel(sort_order);
+
+CREATE TABLE IF NOT EXISTS ryunova.ryunova_product_channel_listing (
+  product_id UUID NOT NULL REFERENCES ryunova.ryunova_product_master(id) ON DELETE CASCADE,
+  channel_id UUID NOT NULL REFERENCES ryunova.ryunova_listing_channel(id) ON DELETE CASCADE,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  last_refreshed_at TIMESTAMPTZ,
+  posted_at TIMESTAMPTZ,
+  PRIMARY KEY (product_id, channel_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_ryunova_pcl_channel ON ryunova.ryunova_product_channel_listing(channel_id);
+CREATE INDEX IF NOT EXISTS ix_ryunova_pcl_product ON ryunova.ryunova_product_channel_listing(product_id);
+
+INSERT INTO ryunova.ryunova_listing_channel (code, name, sort_order, integration_requirements, description)
+VALUES
+  ('amazon', 'Amazon', 10, '{"oauth": false, "notes": "Seller Central; SP-API / MWS credentials and marketplace IDs."}'::jsonb, 'Amazon marketplace listings.'),
+  ('ebay', 'eBay', 20, '{"oauth": true, "notes": "Trading API / OAuth application keys."}'::jsonb, 'eBay fixed-price or auction.'),
+  ('shopify', 'Shopify', 30, '{"oauth": true, "notes": "Store URL, Admin API access token."}'::jsonb, 'Shopify store sync.'),
+  ('facebook', 'Facebook', 40, '{"oauth": true, "notes": "Meta Commerce / Catalog; Business Manager."}'::jsonb, 'Facebook / Instagram shopping surfaces.'),
+  ('usedcoffeegear', 'UsedCoffeeGear', 50, '{"oauth": false, "notes": "Site-specific listing API or manual export."}'::jsonb, 'UsedCoffeeGear marketplace.'),
+  ('gumtree', 'Gumtree', 60, '{"oauth": false, "notes": "Region-specific; often manual or partner API."}'::jsonb, 'Gumtree classifieds.')
+ON CONFLICT (code) DO NOTHING;
+
+-- Product comments (internal collaboration on product master rows)
+CREATE TABLE IF NOT EXISTS ryunova.ryunova_product_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES ryunova.ryunova_product_master(id) ON DELETE CASCADE,
+  organisation_id UUID NOT NULL REFERENCES ryunova.ryunova_organisations(id) ON DELETE RESTRICT,
+  user_id UUID NOT NULL REFERENCES ryunova.ryunova_users(id) ON DELETE RESTRICT,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ryunova_product_comments_product_created
+  ON ryunova.ryunova_product_comments (product_id, created_at DESC);
+
+COMMENT ON TABLE ryunova.ryunova_product_comments IS 'User comments on products; newest first in API.';
 
 CREATE TABLE IF NOT EXISTS ryunova.ryunova_email_verification_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

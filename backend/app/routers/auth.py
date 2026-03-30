@@ -165,8 +165,7 @@ def login(body: LoginRequest, db: Annotated[Session, Depends(get_db)]) -> LoginR
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=(
                     "Database schema mismatch: expected ryunova.ryunova_* tables. "
-                    "New DB: apply db/mvp1_schema.sql (+ db/migrations/order.txt). "
-                    "Legacy public.ryunova_*: run db/move_public_tables_to_ryunova_schema.sql (see db/README.md)."
+                    "Apply db/mvp1_schema.sql to an empty database (see db/README.md)."
                 ),
             ) from e
         raise

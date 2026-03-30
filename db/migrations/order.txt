@@ -1,7 +1,6 @@
-# Ordered SQL applied once per file (tracked in ryunova.ryunova_schema_migrations).
-# Greenfield: only mvp1_schema.sql (full DDL). Add new files to the END for future changes.
-# Paths are relative to the repo db/ directory.
+# Single canonical DDL: **db/mvp1_schema.sql** (all tables, listing channels, comments, etc.).
+# Used only by **scripts/run_ryunova_migrations.sh** for manual bootstrap of a new database.
+# GitHub Actions deploy does **not** run SQL migrations (see .github/workflows/deploy-prod.yml).
 
 mvp1_schema.sql
-migrations/002_product_comments.sql
-migrations/003_listing_channels.sql
+migrations/004_org_settings_product_currency.sql

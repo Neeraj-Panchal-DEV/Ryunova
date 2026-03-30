@@ -16,6 +16,7 @@ urlpatterns = [
     path("users/<uuid:user_id>/profile/", views.user_profile_edit_view, name="user_profile_edit"),
     path("select-organisation/", views.select_organisation_view, name="select_organisation"),
     path("organisations/new/", views.create_organisation_view, name="create_organisation"),
+    path("organisations/settings/", views.organisation_settings_view, name="organisation_settings"),
     path("organisations/users/", views.manage_organisation_users_view, name="organisation_users_manage"),
     path("invite/", views.invite_user_platform_view, name="invite_user_platform"),
     path("invite/organisation/", views.invite_user_organisation_view, name="invite_user_organisation"),

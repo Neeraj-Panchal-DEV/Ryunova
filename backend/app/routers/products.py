@@ -493,6 +493,7 @@ def create_product(
             width_cm=body.width_cm,
             depth_cm=body.depth_cm,
             base_price=body.base_price,
+            currency_code=body.currency_code,
             compare_at_price=body.compare_at_price,
             quantity=body.quantity,
             attributes=body.attributes,

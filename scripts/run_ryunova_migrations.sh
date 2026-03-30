@@ -3,7 +3,7 @@
 #
 # - Optionally creates the target database if missing (admin must have CREATEDB or be superuser).
 # - Ensures app role exists with password (FinText-style shared cluster user).
-# - Applies db/*.sql listed in db/migrations/order.txt (typically mvp1_schema.sql only); records each in ryunova.ryunova_schema_migrations.
+# - Applies db/*.sql listed in db/migrations/order.txt (canonical: **mvp1_schema.sql** only); records each in ryunova.ryunova_schema_migrations.
 # - Grants DML on ryunova.<ryunova_*> app tables to the app role (not ryunova_schema_migrations).
 #
 # Required env: ADMIN_USER ADMIN_PW APPL_USER APPL_PW DB_HOST DB_PORT DB_NAME REPO_DIR

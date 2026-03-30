@@ -54,6 +54,7 @@ class RyunovaProductMaster(Base):
     width_cm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     depth_cm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency_code: Mapped[str] = mapped_column(String(3), nullable=False, default="AUD", server_default="AUD")
     compare_at_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     attributes: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

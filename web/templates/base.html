@@ -62,6 +62,9 @@
               {% if workspace_menu_org_line %}
               <div class="user-nav__menu-org" id="user-nav-org-label">{{ workspace_menu_org_line }}</div>
               {% endif %}
+              {% if request.session.organisation_id %}
+              <a href="{% url 'organisation_settings' %}" class="user-nav__menu-item user-nav__menu-item--org" role="menuitem">Organisation settings</a>
+              {% endif %}
               {% if workspace_show_change_org_link %}
               <a href="{% url 'select_organisation' %}" class="user-nav__menu-item user-nav__menu-item--org" role="menuitem" title="{{ workspace_org_chip_title }}">Change organisation</a>
               {% endif %}

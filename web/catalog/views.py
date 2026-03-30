@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from ryunova_web.api_client import ApiError, api_delete, api_get, api_patch_json, api_post_json, api_post_multipart
+from ryunova_web.currency_choices import CURRENCY_CHOICES, normalize_currency_code
 from ryunova_web.workspace import needs_workspace_selection
 
 
@@ -76,6 +77,7 @@ def _product_draft_from_post(request) -> dict:
         "width_cm": (post.get("width_cm") or "").strip(),
         "depth_cm": (post.get("depth_cm") or "").strip(),
         "base_price": (post.get("base_price") or "0").strip(),
+        "currency_code": normalize_currency_code(post.get("currency_code")),
         "compare_at_price": (post.get("compare_at_price") or "").strip(),
         "quantity": (post.get("quantity") or "1").strip(),
         "status": (post.get("status") or "active").strip(),
@@ -104,6 +106,7 @@ def _product_edit_overlay_post(product: dict, request) -> dict:
         "width_cm",
         "depth_cm",
         "base_price",
+        "currency_code",
         "compare_at_price",
         "quantity",
         "status",
@@ -140,6 +143,19 @@ def _marketplace_listing_items_from_post(request, listing_rows: list) -> list[di
 def _org_id(request):
     v = request.session.get("organisation_id")
     return str(v) if v else None
+
+
+def _org_default_currency(request) -> str:
+    oid = _org_id(request)
+    if not oid:
+        return "AUD"
+    try:
+        o = api_get(f"/organisations/{oid}", _token(request), organisation_id=oid)
+        if isinstance(o, dict) and o.get("currency_code"):
+            return normalize_currency_code(str(o.get("currency_code")))
+    except ApiError:
+        pass
+    return "AUD"
 
 
 def _require_workspace(request):
@@ -205,6 +221,10 @@ def _render_product_form(
         all_marketplaces = api_get("/marketplaces", _token(request), params={"include_inactive": "true"}, organisation_id=_org_id(request)) or []
     except ApiError:
         all_marketplaces = []
+    if product is None:
+        default_currency = _org_default_currency(request)
+    else:
+        default_currency = normalize_currency_code(product.get("currency_code"))
     return render(
         request,
         "catalog/product_form.html",
@@ -217,6 +237,8 @@ def _render_product_form(
             "taxonomy_include_inactive": taxonomy_include_inactive,
             "is_add_product": title == "Add product",
             "all_marketplaces": all_marketplaces,
+            "currency_codes": CURRENCY_CHOICES,
+            "default_currency": default_currency,
         },
     )
 
@@ -546,6 +568,7 @@ def product_create(request):
                 "width_cm": _product_form_dimension_cm(request.POST.get("width_cm")),
                 "depth_cm": _product_form_dimension_cm(request.POST.get("depth_cm")),
                 "base_price": str(Decimal(request.POST.get("base_price", "0"))),
+                "currency_code": normalize_currency_code(request.POST.get("currency_code")),
                 "compare_at_price": request.POST.get("compare_at_price") or None,
                 "quantity": int(request.POST.get("quantity", "1") or 1),
                 "status": request.POST.get("status", "active"),
@@ -650,6 +673,7 @@ def product_edit(request, product_id: UUID):
             payload["width_cm"] = _product_form_dimension_cm(request.POST.get("width_cm"))
             payload["depth_cm"] = _product_form_dimension_cm(request.POST.get("depth_cm"))
             payload["base_price"] = str(Decimal(request.POST.get("base_price", "0")))
+            payload["currency_code"] = normalize_currency_code(request.POST.get("currency_code"))
             cap = request.POST.get("compare_at_price")
             payload["compare_at_price"] = None if not cap else str(Decimal(cap))
             payload["quantity"] = int(request.POST.get("quantity", "1") or 1)
