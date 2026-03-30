@@ -1,3 +1,6 @@
+import time
+import zlib
+
 from django.conf import settings
 
 
@@ -31,15 +34,45 @@ def _nav_initials(display_name: str, email: str) -> str:
     return "?"
 
 
+def _avatar_cache_bust(url: str) -> int:
+    """Stable per URL; changes when avatar path changes (browser cache-bust query)."""
+    return zlib.adler32((url or "").encode("utf-8")) & 0x7FFFFFFF
+
+
+def _avatar_src(url: str, v: int) -> str:
+    if not url:
+        return ""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={v}"
+
+
 def me_dict_to_nav(me: dict) -> dict:
     """Serialize GET /auth/me JSON for Django session + template nav."""
+    url = me.get("avatar_url") or ""
+    v = _avatar_cache_bust(url)
     return {
         "id": str(me.get("id", "")),
         "email": me.get("email") or "",
         "display_name": (me.get("display_name") or "").strip(),
-        "avatar_url": me.get("avatar_url") or "",
+        "avatar_url": url,
+        "avatar_v": v,
+        "avatar_src": _avatar_src(url, v),
         "initials": _nav_initials(me.get("display_name") or "", me.get("email") or ""),
     }
+
+
+def _ensure_nav_avatar_fields(nu: dict) -> dict:
+    """Fill avatar_v / avatar_src for legacy session nav_user entries (no API call)."""
+    if not isinstance(nu, dict):
+        return nu
+    url = nu.get("avatar_url") or ""
+    v = nu.get("avatar_v")
+    if v is None:
+        v = _avatar_cache_bust(url)
+    src = nu.get("avatar_src")
+    if not src and url:
+        src = _avatar_src(url, v)
+    return {**nu, "avatar_v": v, "avatar_src": src or ""}
 
 
 def refresh_session_nav_user(request) -> None:
@@ -49,6 +82,7 @@ def refresh_session_nav_user(request) -> None:
     token = request.session.get("access_token")
     if not token:
         request.session.pop("nav_user", None)
+        request.session.pop("nav_user_refresh_at", None)
         request.session.pop("is_platform_user", None)
         request.session.pop("user_admin_access", None)
         return
@@ -56,15 +90,18 @@ def refresh_session_nav_user(request) -> None:
         me = api_get("/auth/me", token)
     except ApiError:
         request.session.pop("nav_user", None)
+        request.session.pop("nav_user_refresh_at", None)
         request.session.pop("is_platform_user", None)
         request.session.pop("user_admin_access", None)
         return
     if not me:
         request.session.pop("nav_user", None)
+        request.session.pop("nav_user_refresh_at", None)
         request.session.pop("is_platform_user", None)
         request.session.pop("user_admin_access", None)
         return
     request.session["nav_user"] = me_dict_to_nav(me)
+    request.session["nav_user_refresh_at"] = time.time()
     # /auth/me may return is_system_user as alias of is_platform_user (same flag)
     request.session["is_platform_user"] = bool(me.get("is_platform_user") or me.get("is_system_user"))
     request.session["user_admin_access"] = bool(me.get("user_admin_access"))
@@ -145,22 +182,36 @@ def workspace_context(request):
 
 
 def nav_user(request):
+    """Use session nav_user; refresh from GET /auth/me when cache is missing or past TTL."""
     from ryunova_web.api_client import ApiError, api_get
 
     token = request.session.get("access_token")
     if not token:
         return {"nav_user": None}
+
+    ttl = float(getattr(settings, "NAV_USER_ME_TTL_SECONDS", 300))
     cached = request.session.get("nav_user")
-    if isinstance(cached, dict) and cached.get("id"):
-        return {"nav_user": cached}
+    refreshed_at = request.session.get("nav_user_refresh_at")
+
+    if (
+        isinstance(cached, dict)
+        and cached.get("id")
+        and refreshed_at is not None
+        and (time.time() - float(refreshed_at)) < ttl
+    ):
+        return {"nav_user": _ensure_nav_avatar_fields(cached)}
+
     try:
         me = api_get("/auth/me", token)
     except ApiError:
+        if isinstance(cached, dict) and cached.get("id"):
+            return {"nav_user": _ensure_nav_avatar_fields(cached)}
         return {"nav_user": None}
     if not me:
         return {"nav_user": None}
     nu = me_dict_to_nav(me)
     request.session["nav_user"] = nu
+    request.session["nav_user_refresh_at"] = time.time()
     # /auth/me may return is_system_user as alias of is_platform_user (same flag)
     request.session["is_platform_user"] = bool(me.get("is_platform_user") or me.get("is_system_user"))
     request.session["user_admin_access"] = bool(me.get("user_admin_access"))

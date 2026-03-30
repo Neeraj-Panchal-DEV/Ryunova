@@ -107,6 +107,10 @@ RYUNOVA_REWRITE_API_PUBLIC_IN_RESPONSES = os.getenv(
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
+# Header nav: use cached GET /auth/me for up to this many seconds; login/profile call
+# refresh_session_nav_user() to refresh immediately. Override via NAV_USER_ME_TTL_SECONDS in .env.
+NAV_USER_ME_TTL_SECONDS = int(os.getenv("NAV_USER_ME_TTL_SECONDS", "300"))
+
 # Behind AWS ALB / reverse proxy terminating TLS (set USE_TLS_BEHIND_PROXY=true in production)
 if os.getenv("USE_TLS_BEHIND_PROXY", "").lower() in ("1", "true", "yes"):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

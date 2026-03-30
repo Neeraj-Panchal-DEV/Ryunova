@@ -30,7 +30,7 @@
         <div class="user-nav" data-user-nav>
           <button type="button" class="user-nav__trigger" id="user-nav-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
             {% if nav_user.avatar_url %}
-            <img src="{{ nav_user.avatar_url }}" alt="" class="user-nav__avatar-img" width="36" height="36" decoding="async">
+            <img src="{{ nav_user.avatar_src|default:nav_user.avatar_url }}" alt="" class="user-nav__avatar-img" width="36" height="36" decoding="async">
             {% else %}
             <span class="user-nav__avatar-fallback" aria-hidden="true">{{ nav_user.initials }}</span>
             {% endif %}
