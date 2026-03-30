@@ -1363,6 +1363,10 @@ body.profile-crop-modal--open {
   gap: 8px 10px;
   flex: 1;
 }
+/* Author `display: flex` overrides native [hidden]; keep bulk actions hidden until JS shows them. */
+.bulk-toolbar__actions-wrap[hidden] {
+  display: none !important;
+}
 .bulk-toolbar__hint {
   color: var(--text-secondary);
   font-size: 0.75rem;

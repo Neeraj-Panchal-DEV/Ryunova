@@ -197,8 +197,10 @@
   var clearBtn = document.getElementById("bulk-clear-selection");
   if (!form || !panel) return;
 
+  /* Row checkboxes use form="bulk-listings-form" but live outside the <form> DOM, so
+     form.querySelectorAll does not find them — use document scope. */
   function rowChecks() {
-    return form.querySelectorAll("input.bulk-product-check[type=\"checkbox\"]");
+    return document.querySelectorAll("input.bulk-product-check[type=\"checkbox\"]");
   }
 
   function sync() {
@@ -226,8 +228,9 @@
       sync();
     });
   }
-  form.addEventListener("change", function (e) {
-    if (e.target && e.target.classList && e.target.classList.contains("bulk-product-check")) sync();
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains("bulk-product-check")) sync();
   });
   if (clearBtn) {
     clearBtn.addEventListener("click", function () {
