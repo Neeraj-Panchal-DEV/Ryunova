@@ -13,7 +13,7 @@
 # Strongly recommended:
 #   PROD_SITE_DOMAIN — Django hostname (no https://), e.g. app.ryunova.example.com
 # Optional:
-#   PROD_API_PUBLIC_HOST — if set, overrides FastAPI public URL base (API_PUBLIC_URL); if unset, defaults to api.<PROD_SITE_DOMAIN>
+#   PROD_API_PUBLIC_HOST — if set, overrides FastAPI public URL base (API_PUBLIC_URL); if unset, deploy script picks a single-level API host (see scripts/deploy_generate_ec2_env.py)
 #   PROD_AWS_S3_MEDIA_BUCKET — defaults to ryunova-channels-organisations-media if unset
 #   AWS_REGION or PROD_AWS_REGION — S3 URL region (default ap-southeast-2)
 #   PROD_MEDIA_PUBLIC_BASE_URL — override S3 virtual-host URL (e.g. CloudFront)

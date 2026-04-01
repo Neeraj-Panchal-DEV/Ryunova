@@ -6,7 +6,9 @@ Django calls FastAPI on the Docker network: RYUNOVA_API_BASE=http://api:8010/api
 
 Public URLs in API JSON use API_PUBLIC_URL / RYUNOVA_API_PUBLIC (typically https://api host).
 
-Optional PROD_API_PUBLIC_HOST: if unset, defaults to api.<PROD_SITE_DOMAIN> for public API URLs.
+Optional PROD_API_PUBLIC_HOST: if unset, defaults to a single-level API hostname so typical
+wildcard certs match: ryunova-api.<parent> when PROD_SITE_DOMAIN has 3+ labels (e.g.
+ryunova.latrobecomputing.co.in -> ryunova-api.latrobecomputing.co.in), else api.<PROD_SITE_DOMAIN>.
 
 S3: set USE_S3_MEDIA_VAL=true and attach an IAM role with s3:PutObject/DeleteObject/GetObject on the bucket.
 When USE_S3_MEDIA is true, MEDIA_PUBLIC_BASE_URL defaults to the bucket virtual-host URL unless PROD_MEDIA_PUBLIC_BASE_URL
@@ -25,6 +27,21 @@ def esc(s: str | None) -> str:
     if s is None:
         s = ""
     return str(s).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+def default_api_public_host(host_only: str) -> str:
+    """Browser-facing API hostname for API_PUBLIC_URL (HTTPS + ACM).
+
+    If the site host has three or more dot labels (e.g. app.example.com), use
+    ryunova-api.<everything after the first label> so one subdomain sits under
+    the same parent as the app (fits *.parent.example). Otherwise api.<host>.
+    """
+    if host_only.startswith("api."):
+        return host_only
+    parts = host_only.split(".")
+    if len(parts) >= 3:
+        return "ryunova-api." + ".".join(parts[1:])
+    return "api." + host_only
 
 
 # Production media bucket (arn:aws:s3:::ryunova-channels-organisations-media)
@@ -65,7 +82,7 @@ def main() -> None:
     if api_public_override:
         api_host_only = api_public_override.split(":")[0]
     else:
-        api_host_only = "api." + host_only if not host_only.startswith("api.") else host_only
+        api_host_only = default_api_public_host(host_only)
     api_public = f"https://{api_host_only}"
 
     db_docker_host = "host.docker.internal"
