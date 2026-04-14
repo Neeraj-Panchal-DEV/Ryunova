@@ -1,5 +1,5 @@
 """Send transactional email from the API (sign-in codes). Uses same SMTP env vars as Django when set."""
-
+#backend/app/mail_outbound.py
 from __future__ import annotations
 
 import logging

@@ -33,6 +33,11 @@ class RyunovaProductMaster(Base):
         UUID(as_uuid=True), ForeignKey("ryunova_organisations.id", ondelete="RESTRICT"), nullable=False
     )
     sku: Mapped[str] = mapped_column(String(128), nullable=False)
+
+    # NEW: Retail & Global identifiers
+    barcode: Mapped[str | None] = mapped_column(String(255))
+    hs_code: Mapped[str | None] = mapped_column(String(64))
+                                                
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     condition: Mapped[ProductCondition] = mapped_column(
@@ -53,10 +58,22 @@ class RyunovaProductMaster(Base):
     length_cm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     width_cm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     depth_cm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+
+    # NEW: Weight for shipping calculations
+    weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency_code: Mapped[str] = mapped_column(String(3), nullable=False, default="AUD", server_default="AUD")
     compare_at_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
+    # NEW: Cost tracking for margin calculation
+    cost_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    # NEW: Oversell protection bypass
+    allow_oversell: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    
     attributes: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     listing_readiness: Mapped[str] = mapped_column(

@@ -1,16 +1,18 @@
-.DS_Store
-**/.DS_Store
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.env
-*.sqlite3
-backend/uploads/
-# EC2 Docker bind mount for API uploads (see docker-compose.app-only.yml)
-data/
-.pytest_cache/
-.mypy_cache/
-*.egg-info/
-dist/
-build/
+    .DS_Store
+    **/.DS_Store
+    __pycache__/
+    *.py[cod]
+    .venv/
+    venv/
+    **/.venv
+    **/.env
+    .env
+    *.sqlite3
+    backend/uploads/
+    # EC2 Docker bind mount for API uploads (see docker-compose.app-only.yml)
+    data/
+    .pytest_cache/
+    .mypy_cache/
+    *.egg-info/
+    dist/
+    build/

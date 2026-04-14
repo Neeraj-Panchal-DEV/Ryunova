@@ -1,5 +1,5 @@
 """Server-assigned product SKUs: unique per organisation, immutable after create."""
-
+#backend/app/product_sku.py
 from __future__ import annotations
 
 import secrets

@@ -76,6 +76,14 @@ def _product_draft_from_post(request) -> dict:
         "length_cm": (post.get("length_cm") or "").strip(),
         "width_cm": (post.get("width_cm") or "").strip(),
         "depth_cm": (post.get("depth_cm") or "").strip(),
+        # NEW FIELDS START
+        "weight_kg": (post.get("weight_kg") or "").strip(),
+        "cost_price": (post.get("cost_price") or "").strip(),
+        "barcode": (post.get("barcode") or "").strip(),
+        "hs_code": (post.get("hs_code") or "").strip(),
+        "allow_oversell": post.get("allow_oversell") == "1",
+        # NEW FIELDS END
+        "weight_kg": (post.get("weight_kg") or "").strip(),
         "base_price": (post.get("base_price") or "0").strip(),
         "currency_code": normalize_currency_code(post.get("currency_code")),
         "compare_at_price": (post.get("compare_at_price") or "").strip(),
@@ -105,6 +113,13 @@ def _product_edit_overlay_post(product: dict, request) -> dict:
         "length_cm",
         "width_cm",
         "depth_cm",
+        # NEW FIELDS START
+        "weight_kg",
+        "cost_price",
+        "barcode",
+        "hs_code",
+        "allow_oversell",
+        # NEW FIELDS END
         "base_price",
         "currency_code",
         "compare_at_price",
@@ -567,6 +582,13 @@ def product_create(request):
                 "length_cm": _product_form_dimension_cm(request.POST.get("length_cm")),
                 "width_cm": _product_form_dimension_cm(request.POST.get("width_cm")),
                 "depth_cm": _product_form_dimension_cm(request.POST.get("depth_cm")),
+                # NEW FIELDS START (Using existing helper for decimal)
+                "weight_kg": _product_form_dimension_cm(request.POST.get("weight_kg")),
+                "cost_price": request.POST.get("cost_price") or None,
+                "barcode": (request.POST.get("barcode") or "").strip() or None,
+                "hs_code": (request.POST.get("hs_code") or "").strip() or None,
+                "allow_oversell": request.POST.get("allow_oversell") == "1",
+                # NEW FIELDS END
                 "base_price": str(Decimal(request.POST.get("base_price", "0"))),
                 "currency_code": normalize_currency_code(request.POST.get("currency_code")),
                 "compare_at_price": request.POST.get("compare_at_price") or None,
@@ -672,6 +694,13 @@ def product_edit(request, product_id: UUID):
             payload["length_cm"] = _product_form_dimension_cm(request.POST.get("length_cm"))
             payload["width_cm"] = _product_form_dimension_cm(request.POST.get("width_cm"))
             payload["depth_cm"] = _product_form_dimension_cm(request.POST.get("depth_cm"))
+            # NEW FIELDS START
+            payload["weight_kg"] = _product_form_dimension_cm(request.POST.get("weight_kg"))
+            payload["cost_price"] = request.POST.get("cost_price") or None
+            payload["barcode"] = (request.POST.get("barcode") or "").strip() or None
+            payload["hs_code"] = (request.POST.get("hs_code") or "").strip() or None
+            payload["allow_oversell"] = request.POST.get("allow_oversell") == "1"
+            # NEW FIELDS END
             payload["base_price"] = str(Decimal(request.POST.get("base_price", "0")))
             payload["currency_code"] = normalize_currency_code(request.POST.get("currency_code"))
             cap = request.POST.get("compare_at_price")

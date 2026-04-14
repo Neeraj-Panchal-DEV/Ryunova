@@ -430,3 +430,56 @@ html {
     width: 100%;
   }
 }
+
+/* --- Modern Micro-interactions & Animations --- */
+
+/* 1. Hero Section Initial Load Animation */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+    opacity: 0;
+    animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Staggering delays so things load one after another */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+
+/* 2. Button Hover Effects (Lift and glow) */
+.landing-btn {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.landing-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 3. Cards Hover Effects (Marketplaces & Capabilities) */
+.landing-marketplace, .landing-cap-card, .landing-pillars > div {
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+    border: 1px solid transparent; /* Prevents layout shift */
+}
+
+.landing-marketplace:hover, .landing-cap-card:hover, .landing-pillars > div:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background-color: #ffffff; /* Ensures contrast on hover */
+    border-radius: 12px;
+}
+
+/* 4. Scroll Reveal Classes (Controlled by JS) */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}

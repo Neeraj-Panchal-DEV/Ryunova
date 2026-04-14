@@ -2,21 +2,23 @@
 {% load static %}
 {% block title %}RyuNova Platform — Run every marketplace from one place{% endblock %}
 {% block main_class %}main--landing{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'landing.css' %}?v=hero-flex">
 {% endblock %}
+
 {% block content %}
 <div class="landing">
   <section class="landing-hero landing-hero--split" aria-labelledby="landing-hero-title">
     <div class="landing-hero__split">
       <div class="landing-hero__copy">
-        <p class="landing-hero__eyebrow">RYUNOVA PLATFORM · Multi-marketplace</p>
-        <h1 id="landing-hero-title" class="landing-hero__title">All your listings, inventory, and orders—reimagined for eCommerce marketplaces.</h1>
-        <p class="landing-hero__lead">
+        <p class="landing-hero__eyebrow animate-fade-up">RYUNOVA PLATFORM · Multi-marketplace</p>
+        <h1 id="landing-hero-title" class="landing-hero__title animate-fade-up delay-1">All your listings, inventory, and orders—reimagined for eCommerce marketplaces.</h1>
+        <p class="landing-hero__lead animate-fade-up delay-2">
           RyuNova Platform is the control room for teams who sell across marketplaces and your own store.
           One product master, many marketplaces, clear fulfillment—built for coffee equipment and beyond.
         </p>
-        <div class="landing-hero__ctas">
+        <div class="landing-hero__ctas animate-fade-up delay-3">
           {% if request.session.access_token %}
           <a class="landing-btn landing-btn--primary landing-btn--on-light" href="{% url 'dashboard' %}">Open dashboard</a>
           <a class="landing-btn landing-btn--ghost landing-btn--on-light" href="{% url 'product_list' %}">Catalog</a>
@@ -26,7 +28,7 @@
           {% endif %}
         </div>
       </div>
-      <div class="landing-hero__media">
+      <div class="landing-hero__media animate-fade-up delay-4">
         <img
           class="landing-hero__img"
           src="{% static 'images/landing-hero-espresso.png' %}"
@@ -40,7 +42,7 @@
   </section>
 
   <section class="landing-section landing-section--alt" aria-labelledby="landing-why-title">
-    <div class="landing-section__inner">
+    <div class="landing-section__inner reveal-on-scroll">
       <header class="landing-section__head">
         <h2 id="landing-why-title" class="landing-section__title">A single platform built for multi-marketplace commerce</h2>
         <p class="landing-section__lead">
@@ -69,7 +71,7 @@
   </section>
 
   <section class="landing-section" aria-labelledby="landing-marketplaces-title">
-    <div class="landing-section__inner">
+    <div class="landing-section__inner reveal-on-scroll">
       <header class="landing-section__head">
         <h2 id="landing-marketplaces-title" class="landing-section__title">Marketplaces your teams care about</h2>
         <p class="landing-section__lead">
@@ -91,7 +93,7 @@
   </section>
 
   <section class="landing-section landing-section--alt" aria-labelledby="landing-cap-title">
-    <div class="landing-section__inner">
+    <div class="landing-section__inner reveal-on-scroll">
       <header class="landing-section__head">
         <h2 id="landing-cap-title" class="landing-section__title">Full platform capabilities</h2>
         <p class="landing-section__lead">
@@ -114,22 +116,43 @@
   </section>
 
   <section class="landing-section landing-section--dark landing-cta" aria-labelledby="landing-cta-title">
-    <div class="landing-section__inner">
+    <div class="landing-section__inner reveal-on-scroll">
       <h2 id="landing-cta-title" class="landing-cta__title">Ready to centralize your marketplaces?</h2>
       <p class="landing-cta__lead">Sign in to manage products, categories, and brands—or explore the catalog when you’re authenticated.</p>
       <div class="landing-hero__ctas" style="justify-content:center;">
         {% if request.session.access_token %}
         <a class="landing-btn landing-btn--primary" href="{% url 'dashboard' %}">Open dashboard</a>
-        {% else %}
-        <a class="landing-btn landing-btn--primary" href="{% url 'login' %}">Sign in</a>
-        {% endif %}
-        {% if request.session.access_token %}
         <a class="landing-btn landing-btn--ghost" href="{% url 'product_list' %}">Catalog</a>
         {% else %}
+        <a class="landing-btn landing-btn--primary" href="{% url 'login' %}">Sign in</a>
         <a class="landing-btn landing-btn--ghost" href="{% url 'home' %}#landing-cap-title">Explore capabilities</a>
         {% endif %}
       </div>
     </div>
   </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.15 // 15% section screen par aate hi animation trigger hoga
+    };
+
+    const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target); // Ek baar animate hone ke baad dobara nahi hoga
+            }
+        });
+    }, observerOptions);
+
+    const revealElements = document.querySelectorAll('.reveal-on-scroll');
+    revealElements.forEach(el => observer.observe(el));
+});
+</script>
 {% endblock %}

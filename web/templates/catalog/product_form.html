@@ -4,6 +4,45 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'taxonomy.css' %}">
 <link rel="stylesheet" href="{% static 'product-toolbar.css' %}">
+<style>
+  /* Base styles for togglable sections to match theme */
+  .form-section-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .form-section-toggle summary {
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .form-section-toggle summary::after {
+    content: "▼";
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+  }
+  .form-section-toggle[open] summary {
+    border-bottom: 1px solid var(--border);
+  }
+  .form-section-toggle[open] summary::after {
+    transform: rotate(180deg);
+  }
+  .form-section-toggle__content {
+    padding: 1.5rem 1.25rem;
+  }
+  /* Ensure details tag removes default marker in some browsers */
+  .form-section-toggle summary::-webkit-details-marker {
+    display: none;
+  }
+</style>
 {% endblock %}
 {% block content %}
 <div class="toolbar product-toolbar">
@@ -69,6 +108,7 @@
     </aside>
     {% endif %}
   </div>
+  
   <div class="form-grid">
     <label class="field">
       <span class="field__label">Condition</span>
@@ -114,6 +154,7 @@
       <span class="field__label">Colour</span>
       <input name="colour" class="input" maxlength="255" value="{{ product.colour|default:'' }}" placeholder="e.g. Stainless steel, Black">
     </label>
+    
     <label class="field">
       <span class="field__label">Length (cm)</span>
       <input name="length_cm" type="number" step="0.001" min="0" class="input" value="{{ product.length_cm|default:'' }}" placeholder="Optional">
@@ -129,9 +170,18 @@
     <div class="field field--full">
       <p class="field__hint" style="margin:0;">Physical size uses <strong>centimetres</strong> (L × W × D). Leave blank if not applicable.</p>
     </div>
+
     <label class="field">
       <span class="field__label">Base price</span>
       <input name="base_price" type="number" step="0.01" min="0" class="input" required value="{{ product.base_price|default:'0' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Compare at price</span>
+      <input name="compare_at_price" type="number" step="0.01" min="0" class="input" value="{{ product.compare_at_price|default:'' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Cost price</span>
+      <input name="cost_price" type="number" step="0.01" min="0" class="input" value="{{ product.cost_price|default:'' }}" placeholder="For profit calculation">
     </label>
     <label class="field">
       <span class="field__label">Currency</span>
@@ -141,14 +191,7 @@
         {% endfor %}
       </select>
     </label>
-    <label class="field">
-      <span class="field__label">Compare at price</span>
-      <input name="compare_at_price" type="number" step="0.01" min="0" class="input" value="{{ product.compare_at_price|default:'' }}">
-    </label>
-    <label class="field">
-      <span class="field__label">Quantity</span>
-      <input name="quantity" type="number" min="0" class="input" value="{{ product.quantity|default:'1' }}">
-    </label>
+    
     <label class="field">
       <span class="field__label">Status</span>
       <select name="status" class="input input--select">
@@ -164,88 +207,125 @@
         Active (shown in product lists when “Show disabled” is off)
       </label>
     </label>
-    <div class="field field--full surface surface--marketplace">
-      <h2 class="section-title">Marketplace listing</h2>
-      <p class="field__hint">Inventory <strong>status</strong> (above) is separate from <strong>listing readiness</strong>. Choose <em>Ready to post</em> when the listing is complete; only then can you enable each marketplace. Returning to <em>Draft</em> clears all marketplace flags.</p>
+  </div> <details class="form-section-toggle field field--full">
+    <summary>Shipping &amp; Inventory</summary>
+    <div class="form-section-toggle__content form-grid">
       <label class="field">
-        <span class="field__label">Listing readiness</span>
-        <select name="listing_readiness" id="product-listing-readiness" class="input input--select">
-          <option value="draft" {% if not product or product.listing_readiness|default:'draft' == 'draft' %}selected{% endif %}>Draft</option>
-          <option value="ready_to_post" {% if product and product.listing_readiness == 'ready_to_post' %}selected{% endif %}>Ready to post</option>
-        </select>
+        <span class="field__label">Quantity</span>
+        <input name="quantity" type="number" min="0" class="input" value="{{ product.quantity|default:'1' }}">
       </label>
-      <div class="table-wrap marketplace-matrix-wrap">
-        <table class="table table--compact" aria-label="Marketplaces">
-          <thead><tr><th>Marketplace</th><th>Enabled</th><th>Last refreshed</th><th>Refresh now</th></tr></thead>
-          <tbody>
-          {% if product and product.marketplace_listings %}
-            {% for cl in product.marketplace_listings %}
-            <tr>
-              <td><strong>{{ cl.name }}</strong> <span class="muted">({{ cl.code }})</span></td>
-              <td>
-                <input type="checkbox" name="marketplace_{{ cl.marketplace_id }}" value="on" {% if cl.enabled %}checked{% endif %} {% if not product.listing_readiness or product.listing_readiness != 'ready_to_post' %}disabled{% endif %}>
-              </td>
-              <td>{% if cl.last_refreshed_at %}{{ cl.last_refreshed_at|slice:":19" }}{% else %}—{% endif %}</td>
-              <td>
-                <input type="checkbox" name="marketplace_refresh_{{ cl.marketplace_id }}" value="on" {% if not product.listing_readiness or product.listing_readiness != 'ready_to_post' %}disabled{% endif %} aria-label="Mark refreshed for {{ cl.name }}">
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            {% for ch in all_marketplaces %}
-            <tr>
-              <td><strong>{{ ch.name }}</strong> <span class="muted">({{ ch.code }})</span></td>
-              <td colspan="3"><span class="field__hint" style="margin:0;">Save the product first, then set <strong>Ready to post</strong> to manage marketplace flags.</span></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4">No marketplaces configured. <a href="{% url 'marketplace_list' %}">Marketplace management</a>.</td></tr>
-            {% endfor %}
-          {% endif %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="field field--full product-media-field">
-      <span class="field__label">Images &amp; videos</span>
-      <p class="field__hint">Add multiple files. Choose which one is the <strong>cover</strong> — it appears first for marketplaces and in product listings. JPEG, PNG, GIF, WebP, MP4, WebM, QuickTime.</p>
-      {% if is_add_product and product %}<p class="field__hint">If save failed, choose your files again — browsers do not keep file inputs after a new page load.</p>{% endif %}
-      <input type="hidden" name="cover_index" id="product-cover-index" value="{% if product %}{{ product.cover_index|default:'0' }}{% else %}0{% endif %}">
-      <input
-        type="file"
-        id="product-media-input"
-        name="media"
-        multiple
-        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-        class="input input--file">
-      <div id="product-media-preview" class="product-media-preview" aria-live="polite"></div>
-      {% if product and product.images %}
-      <label class="checkbox-label checkbox-label--inline product-media-cover-first">
-        <input type="checkbox" name="cover_first_new" value="1" {% if product and product.cover_first_new %}checked{% endif %}>
-        Use <strong>first new upload</strong> as cover (instead of a current file below)
-      </label>
-      {% endif %}
-      <div class="field product-media-url-field">
-        <span class="field__label">Import image from URL</span>
-        <p class="field__hint">Direct link to a <strong>JPEG, PNG, GIF, or WebP</strong> only (not HTML pages). The server checks the file and saves it with a name derived from the product title.</p>
-        <input type="url" name="image_url" class="input" placeholder="https://example.com/path/to/photo.jpg" autocomplete="off" inputmode="url" value="{% if product %}{{ product.image_url|default:'' }}{% endif %}">
-        <label class="checkbox-label checkbox-label--inline product-media-cover-first">
-          <input type="checkbox" name="image_url_is_cover" value="1" {% if product and product.image_url_is_cover %}checked{% endif %}>
-          Set <strong>imported URL image</strong> as cover
+      <label class="field field--checkbox" style="display: flex; align-items: center; margin-top: 1.5rem;">
+        <label class="checkbox-label checkbox-label--inline">
+          <input type="checkbox" name="allow_oversell" value="1" {% if product and product.allow_oversell %}checked{% endif %}>
+          Continue selling when out of stock
         </label>
-      </div>
+      </label>
+      <label class="field">
+        <span class="field__label">Weight (kg)</span>
+        <input name="weight_kg" type="number" step="0.001" min="0" class="input" value="{{ product.weight_kg|default:'' }}" placeholder="e.g. 1.500">
+      </label>
     </div>
-    <div class="field field--full product-sku-footer">
-      <span class="field__label">SKU</span>
-      {% if is_add_product and not product.id %}
-      <p class="field__hint">A unique <strong>10-letter</strong> code (A–Z) is assigned when you create this product. It stays fixed for the life of the product and is the stable identifier for marketplaces such as Shopify and eBay.</p>
-      <input type="text" class="input input--readonly" value="" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true" placeholder="Assigned when saved">
-      {% else %}
-      <input type="text" class="input input--readonly" value="{{ product.sku|default:'' }}" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true">
-      <p class="field__hint">SKU cannot be changed after the product is created.</p>
-      {% endif %}
+  </details>
+
+  <details class="form-section-toggle field field--full">
+    <summary>Global Identifiers</summary>
+    <div class="form-section-toggle__content form-grid">
+      <label class="field">
+        <span class="field__label">Barcode (UPC/EAN)</span>
+        <input name="barcode" class="input" value="{{ product.barcode|default:'' }}" placeholder="Used for Amazon/Retail">
+      </label>
+      <label class="field">
+        <span class="field__label">HS Code</span>
+        <input name="hs_code" class="input" value="{{ product.hs_code|default:'' }}" placeholder="For international shipping">
+      </label>
+    </div>
+  </details>
+
+  <div class="field field--full surface surface--marketplace " style="margin-top: 1rem; padding: 1.5rem; box-sizing: border-box; border-radius: 8px;">
+    <h2 class="section-title" style="margin-top: 0;">Marketplace listing</h2>
+    <p class="field__hint">Inventory <strong>status</strong> (above) is separate from <strong>listing readiness</strong>. Choose <em>Ready to post</em> when the listing is complete; only then can you enable each marketplace. Returning to <em>Draft</em> clears all marketplace flags.</p>
+    <label class="field" style="max-width: 300px; margin-top: 1rem;">
+      <span class="field__label">Listing readiness</span>
+      <select name="listing_readiness" id="product-listing-readiness" class="input input--select">
+        <option value="draft" {% if not product or product.listing_readiness|default:'draft' == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="ready_to_post" {% if product and product.listing_readiness == 'ready_to_post' %}selected{% endif %}>Ready to post</option>
+      </select>
+    </label>
+    <div class="table-wrap marketplace-matrix-wrap" style="margin-top: 1rem;">
+      <table class="table table--compact" aria-label="Marketplaces">
+        <thead><tr><th>Marketplace</th><th>Enabled</th><th>Last refreshed</th><th>Refresh now</th></tr></thead>
+        <tbody>
+        {% if product and product.marketplace_listings %}
+          {% for cl in product.marketplace_listings %}
+          <tr>
+            <td><strong>{{ cl.name }}</strong> <span class="muted">({{ cl.code }})</span></td>
+            <td>
+              <input type="checkbox" name="marketplace_{{ cl.marketplace_id }}" value="on" {% if cl.enabled %}checked{% endif %} {% if not product.listing_readiness or product.listing_readiness != 'ready_to_post' %}disabled{% endif %}>
+            </td>
+            <td>{% if cl.last_refreshed_at %}{{ cl.last_refreshed_at|slice:":19" }}{% else %}—{% endif %}</td>
+            <td>
+              <input type="checkbox" name="marketplace_refresh_{{ cl.marketplace_id }}" value="on" {% if not product.listing_readiness or product.listing_readiness != 'ready_to_post' %}disabled{% endif %} aria-label="Mark refreshed for {{ cl.name }}">
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          {% for ch in all_marketplaces %}
+          <tr>
+            <td><strong>{{ ch.name }}</strong> <span class="muted">({{ ch.code }})</span></td>
+            <td colspan="3"><span class="field__hint" style="margin:0;">Save the product first, then set <strong>Ready to post</strong> to manage marketplace flags.</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No marketplaces configured. <a href="{% url 'marketplace_list' %}">Marketplace management</a>.</td></tr>
+          {% endfor %}
+        {% endif %}
+        </tbody>
+      </table>
     </div>
   </div>
-  <div class="form-actions">
+  
+  <div class="form-grid" style="margin-top: 1.5rem;">
+      <div class="field field--full product-media-field">
+        <span class="field__label">Images &amp; videos</span>
+        <p class="field__hint">Add multiple files. Choose which one is the <strong>cover</strong> — it appears first for marketplaces and in product listings. JPEG, PNG, GIF, WebP, MP4, WebM, QuickTime.</p>
+        {% if is_add_product and product %}<p class="field__hint">If save failed, choose your files again — browsers do not keep file inputs after a new page load.</p>{% endif %}
+        <input type="hidden" name="cover_index" id="product-cover-index" value="{% if product %}{{ product.cover_index|default:'0' }}{% else %}0{% endif %}">
+        <input
+          type="file"
+          id="product-media-input"
+          name="media"
+          multiple
+          accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+          class="input input--file">
+        <div id="product-media-preview" class="product-media-preview" aria-live="polite"></div>
+        {% if product and product.images %}
+        <label class="checkbox-label checkbox-label--inline product-media-cover-first">
+          <input type="checkbox" name="cover_first_new" value="1" {% if product and product.cover_first_new %}checked{% endif %}>
+          Use <strong>first new upload</strong> as cover (instead of a current file below)
+        </label>
+        {% endif %}
+        <div class="field product-media-url-field" style="margin-top: 1rem;">
+          <span class="field__label">Import image from URL</span>
+          <p class="field__hint">Direct link to a <strong>JPEG, PNG, GIF, or WebP</strong> only (not HTML pages). The server checks the file and saves it with a name derived from the product title.</p>
+          <input type="url" name="image_url" class="input" placeholder="https://example.com/path/to/photo.jpg" autocomplete="off" inputmode="url" value="{% if product %}{{ product.image_url|default:'' }}{% endif %}">
+          <label class="checkbox-label checkbox-label--inline product-media-cover-first" style="margin-top: 0.5rem;">
+            <input type="checkbox" name="image_url_is_cover" value="1" {% if product and product.image_url_is_cover %}checked{% endif %}>
+            Set <strong>imported URL image</strong> as cover
+          </label>
+        </div>
+      </div>
+      <div class="field field--full product-sku-footer">
+        <span class="field__label">SKU</span>
+        {% if is_add_product and not product.id %}
+        <p class="field__hint">A unique <strong>10-letter</strong> code (A–Z) is assigned when you create this product. It stays fixed for the life of the product and is the stable identifier for marketplaces such as Shopify and eBay.</p>
+        <input type="text" class="input input--readonly" value="" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true" placeholder="Assigned when saved">
+        {% else %}
+        <input type="text" class="input input--readonly" value="{{ product.sku|default:'' }}" readonly disabled tabindex="-1" autocomplete="off" aria-readonly="true">
+        <p class="field__hint">SKU cannot be changed after the product is created.</p>
+        {% endif %}
+      </div>
+  </div>
+  
+  <div class="form-actions" style="margin-top: 2rem;">
     <button type="submit" class="btn btn--primary btn--lg">{% if is_add_product %}Create product{% else %}Save changes{% endif %}</button>
     {% if is_add_product %}<a href="{% url 'product_create' %}" class="btn btn--secondary btn--lg">Clear form</a>{% endif %}
   </div>

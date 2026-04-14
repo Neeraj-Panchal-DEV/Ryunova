@@ -54,16 +54,23 @@ class ProductCore(BaseModel):
     length_cm: Decimal | None = Field(None, ge=0, decimal_places=3)
     width_cm: Decimal | None = Field(None, ge=0, decimal_places=3)
     depth_cm: Decimal | None = Field(None, ge=0, decimal_places=3)
+    weight_kg: Decimal | None = Field(None, ge=0, decimal_places=3) # NEW
     base_price: Decimal = Field(ge=0, decimal_places=2)
     compare_at_price: Decimal | None = Field(None, ge=0, decimal_places=2)
+    cost_price: Decimal | None = Field(None, ge=0, decimal_places=2) # NEW
     quantity: int = Field(ge=0, default=1)
+    allow_oversell: bool = False # NEW
     attributes: dict[str, Any] | None = None
     status: str = Field(default="active", max_length=32)
     listing_readiness: ListingReadiness = "draft"
     active: bool = True
     currency_code: str = Field(default="AUD", min_length=3, max_length=3)
 
-    @field_validator("colour", mode="before")
+    # Global Identifiers
+    barcode: str | None = Field(None, max_length=255) # NEW
+    hs_code: str | None = Field(None, max_length=64) # NEW
+
+    @field_validator("colour", "barcode", "hs_code", mode="before")
     @classmethod
     def _blank_colour_none(cls, v: object) -> str | None:
         if v is None:
@@ -101,16 +108,24 @@ class ProductUpdate(BaseModel):
     length_cm: Decimal | None = Field(None, ge=0, decimal_places=3)
     width_cm: Decimal | None = Field(None, ge=0, decimal_places=3)
     depth_cm: Decimal | None = Field(None, ge=0, decimal_places=3)
+    weight_kg: Decimal | None = Field(None, ge=0, decimal_places=3) # NEW
     base_price: Decimal | None = Field(None, ge=0, decimal_places=2)
     compare_at_price: Decimal | None = Field(None, ge=0, decimal_places=2)
+    cost_price: Decimal | None = Field(None, ge=0, decimal_places=2) # NEW
     quantity: int | None = Field(None, ge=0)
+    allow_oversell: bool | None = None # NEW
+
+    # Global Identifiers
+    barcode: str | None = Field(None, max_length=255) # NEW
+    hs_code: str | None = Field(None, max_length=64) # NEW
+
     attributes: dict[str, Any] | None = None
     status: str | None = Field(None, max_length=32)
     listing_readiness: ListingReadiness | None = None
     active: bool | None = None
     currency_code: str | None = Field(None, min_length=3, max_length=3)
 
-    @field_validator("colour", mode="before")
+    @field_validator("colour", "barcode", "hs_code", mode="before")
     @classmethod
     def _blank_colour_none_update(cls, v: object) -> str | None:
         if v is None:

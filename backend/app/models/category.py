@@ -42,8 +42,8 @@ class RyunovaCategory(Base):
     created_by_user: Mapped["RyunovaUser | None"] = relationship(
         "RyunovaUser",
         foreign_keys=[created_by_user_id],
-    )
-    updated_by_user: Mapped["RyunovaUser | None"] = relationship(
+    )  
+    updated_by_user: Mapped["RyunovaUser | None"] =     relationship(
         "RyunovaUser",
         foreign_keys=[updated_by_user_id],
     )

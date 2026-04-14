@@ -1,4 +1,5 @@
 """Shared constants (IDs that match seeded SQL in db/mvp1_schema.sql)."""
+#backend/app/constants.py
 
 from __future__ import annotations
 

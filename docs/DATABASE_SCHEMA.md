@@ -431,7 +431,11 @@ Stores **image and video** metadata; actual files live in local upload dir or S3
 | is_cover    | BOOLEAN      | NOT NULL, DEFAULT false | Primary media for listings and product list thumb |
 | s3_bucket   | VARCHAR(255) | NOT NULL   | e.g. 'cmw-product-images' |
 | s3_key      | VARCHAR(512) | NOT NULL   | Object key (e.g. 'products/{product_id}/{filename}.jpg') |
-| filename    | VARCHAR(255) |             | Original filename |
+| filename    | VARCHAR(255) |             | Original filename 
+
+
+
+|
 | content_type| VARCHAR(128) |             | e.g. image/jpeg, video/mp4 |
 | size_bytes  | BIGINT       |             | |
 | created_at  | TIMESTAMPTZ  | NOT NULL, DEFAULT now() | |

@@ -1,5 +1,5 @@
 """Build public URLs for uploaded media (avatars, org logos, product images)."""
-
+#backend/app/media_urls.py
 from __future__ import annotations
 
 from app.config import get_settings
