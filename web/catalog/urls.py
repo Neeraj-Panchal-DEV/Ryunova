@@ -29,4 +29,5 @@ urlpatterns = [
     path("channels/", views.redirect_legacy_channel_list),
     path("channels/<uuid:channel_id>/", views.redirect_legacy_channel_edit),
     path("products/bulk-listings/", views.product_bulk_listings, name="product_bulk_listings"),
+    path('products/export/', views.product_export, name='product_export'),
 ]

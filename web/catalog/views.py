@@ -1,10 +1,11 @@
 import json
+import csv
 from decimal import Decimal, InvalidOperation
 from urllib.parse import parse_qsl, urlencode, urlsplit
 from uuid import UUID
 
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -1433,3 +1434,93 @@ def terms_of_service(request):
 
 def contact(request):
     return render(request, "pages/contact.html")
+
+# Export product in the form of file (CSV or JSON)
+def product_export(request):
+    if red := _require_workspace(request):
+        return red
+    
+    # 1. Get Filters from request
+    q = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip() or None
+    listing_rf = request.GET.get("listing_readiness", "").strip() or None
+    include_inactive = request.GET.get("include_inactive") == "true"
+    
+    # Selected columns by user
+    selected_cols = request.GET.getlist("cols")
+    if not selected_cols:
+        # Fallback agar user bina koi column select kiye submit kar de
+        selected_cols = ["sku", "title", "base_price", "quantity"] 
+
+    params = {"page_size": 100, "page": 1}  # Fetch in large batches
+    if q: params["q"] = q
+    if status_filter: params["status_filter"] = status_filter
+    if listing_rf: params["listing_readiness_filter"] = listing_rf
+    if include_inactive: params["include_inactive"] = "true"
+
+    # 2. Fetch all matching products from FastAPI
+    all_products = []
+    token = _token(request)
+    oid = _org_id(request)
+    
+    while True:
+        try:
+            body = api_get("/products", token, params=params, organisation_id=oid) or {}
+            items = body.get("items", []) if isinstance(body, dict) else []
+            all_products.extend(items)
+            
+            total_pages = body.get("total_pages", 1) if isinstance(body, dict) else 1
+            if params["page"] >= total_pages:
+                break
+            params["page"] += 1
+        except ApiError:
+            break
+
+    # 3. Map Headers (Saari naye aur purane columns ki list)
+    header_mapping = {
+        "sku": "SKU", "title": "Product Title", "description": "Description",
+        "condition": "Condition", "brand_name": "Brand Name", "model": "Model",
+        "colour": "Colour", "base_price": "Base Price", "compare_at_price": "Compare Price",
+        "cost_price": "Cost Price", "currency_code": "Currency", "quantity": "Quantity",
+        "allow_oversell": "Allow Oversell", "weight_kg": "Weight (kg)",
+        "length_cm": "Length (cm)", "width_cm": "Width (cm)", "depth_cm": "Depth (cm)",
+        "barcode": "Barcode", "hs_code": "HS Code", "status": "Status",
+        "listing_readiness": "Listing Readiness", "active": "Is Active"
+    }
+    
+    # Jo columns user ne select kiye hain, sirf unka header banayega
+    headers = [header_mapping.get(col, col.title()) for col in selected_cols]
+
+    # 4. Format check aur File Generation
+    req_format = request.GET.get("format", "csv")
+    
+    if req_format == "json":
+        # JSON Export Logic
+        response = HttpResponse(content_type='application/json')
+        response['Content-Disposition'] = 'attachment; filename="ryunova_products_export.json"'
+        
+        json_data = []
+        for prod in all_products:
+            row_data = {header_mapping.get(col, col): prod.get(col, "") for col in selected_cols}
+            json_data.append(row_data)
+        
+        response.write(json.dumps(json_data, indent=4))
+        return response
+        
+    else: 
+        # Default CSV Export Logic
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="ryunova_products_export.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(headers) # Header daalo
+
+        # Data rows daalo
+        for prod in all_products:
+            row = []
+            for col in selected_cols:
+                val = prod.get(col, "")
+                row.append(str(val) if val is not None else "")
+            writer.writerow(row)
+
+        return response

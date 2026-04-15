@@ -2,12 +2,50 @@
 {% load static %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'product-toolbar.css' %}">
+<style>
+  .export-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  .export-modal {
+      background: var(--surface, #ffffff);
+      padding: 2rem;
+      border-radius: 12px;
+      width: 95%;
+      max-width: 800px;
+      max-height: 85vh;
+      overflow-y: auto;
+      z-index: 9999;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+  .export-modal[hidden], .export-modal-overlay[hidden] {
+      display: none !important;
+  }
+  .export-fields-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--surface-alt, #f9f9f9);
+      border-radius: 8px;
+  }
+</style>
 {% endblock %}
 {% block title %}Products — RyuNova Platform{% endblock %}
 {% block content %}
 <div class="toolbar">
   <h1 class="page-title">Products</h1>
-  <a href="{% url 'product_create' %}" class="btn btn--primary">Add product</a>
+  <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+    <button type="button" class="btn btn--secondary" id="btn-import" onclick="alert('Import functionality coming soon!')">Import</button>
+    <button type="button" class="btn btn--secondary" id="btn-export-open">Export</button>
+    <a href="{% url 'product_create' %}" class="btn btn--primary">Add product</a>
+  </div>
 </div>
 <form method="get" class="filter-bar surface surface--filter filter-bar--compact">
   <input type="search" name="q" value="{{ q }}" placeholder="Search title / SKU" class="input input--search input--filter-control" aria-label="Search by title or SKU">
@@ -199,8 +237,6 @@
   var clearBtn = document.getElementById("bulk-clear-selection");
   if (!form || !panel) return;
 
-  /* Row checkboxes use form="bulk-listings-form" but live outside the <form> DOM, so
-     form.querySelectorAll does not find them — use document scope. */
   function rowChecks() {
     return document.querySelectorAll("input.bulk-product-check[type=\"checkbox\"]");
   }
@@ -293,4 +329,108 @@
 })();
 </script>
 {% endif %}
+<div class="export-modal-overlay" id="export-modal-overlay" hidden>
+  <div class="export-modal" id="export-modal-panel" role="dialog" aria-labelledby="export-title">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 id="export-title" style="margin: 0;">Export Products</h2>
+      <button type="button" class="btn btn--secondary" id="btn-export-close">✕ Close</button>
+    </div>
+    
+    <p class="field__hint">Current page filters will be applied automatically. Select the columns you want in your file.</p>
+    
+    <form method="GET" action="{% url 'product_export' %}" id="export-form">
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="status" value="{{ status_filter }}">
+      <input type="hidden" name="listing_readiness" value="{{ listing_readiness_filter }}">
+      <input type="hidden" name="include_inactive" value="{% if include_inactive %}true{% endif %}">
+      
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <label class="field" style="flex: 1;">
+          <span class="field__label">File Format</span>
+          <select name="format" class="input input--select">
+            <option value="csv">CSV (Best for Excel)</option>
+            <option value="json">JSON (Best for Dev/Backup)</option>
+          </select>
+        </label>
+        <div style="flex: 2; display: flex; align-items: flex-end; gap: 1rem; padding-bottom: 0.5rem;">
+            <button type="button" class="btn btn--secondary btn--small" id="btn-select-all">Select All</button>
+            <button type="button" class="btn btn--secondary btn--small" id="btn-deselect-all">Deselect All</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 1.5rem;">
+        <span class="field__label">Select Columns to Export</span>
+        <div class="export-fields-grid">
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="sku" checked> SKU</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="title" checked> Title</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="description"> Description</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="condition" checked> Condition</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="brand_name" checked> Brand Name</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="model"> Model</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="colour"> Colour</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="base_price" checked> Base Price</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="compare_at_price"> Compare Price</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="cost_price"> Cost Price</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="currency_code" checked> Currency</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="quantity" checked> Quantity</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="allow_oversell"> Allow Oversell</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="weight_kg" checked> Weight (kg)</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="length_cm"> Length (cm)</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="width_cm"> Width (cm)</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="depth_cm"> Depth (cm)</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="barcode" checked> Barcode</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="hs_code"> HS Code</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="status" checked> Status</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="listing_readiness"> Listing Readiness</label>
+          <label class="checkbox-label"><input type="checkbox" name="cols" class="export-chk" value="active"> Active in Catalog</label>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top: 2rem; justify-content: flex-end;">
+        <button type="submit" class="btn btn--primary btn--lg" id="btn-download-export">Download File</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var exportBtn = document.getElementById('btn-export-open');
+    var exportOverlay = document.getElementById('export-modal-overlay');
+    var exportClose = document.getElementById('btn-export-close');
+    var exportDownload = document.getElementById('btn-download-export');
+    var chkBoxes = document.querySelectorAll('.export-chk');
+
+    if (exportBtn && exportOverlay) {
+      exportBtn.addEventListener('click', function() {
+        exportOverlay.hidden = false;
+      });
+      
+      exportClose.addEventListener('click', function() {
+        exportOverlay.hidden = true;
+      });
+      
+      // Select All / Deselect All
+      var selectAllBtn = document.getElementById('btn-select-all');
+      var deselectAllBtn = document.getElementById('btn-deselect-all');
+      
+      if (selectAllBtn) {
+          selectAllBtn.addEventListener('click', function() {
+              chkBoxes.forEach(chk => chk.checked = true);
+          });
+      }
+      if (deselectAllBtn) {
+          deselectAllBtn.addEventListener('click', function() {
+              chkBoxes.forEach(chk => chk.checked = false);
+          });
+      }
+
+      if (exportDownload) {
+          exportDownload.addEventListener('click', function() {
+            setTimeout(function() { exportOverlay.hidden = true; }, 800);
+          });
+      }
+    }
+  });
+</script>
 {% endblock %}
